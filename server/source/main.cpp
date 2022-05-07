@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include <fcntl.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -45,18 +46,33 @@ int main()
         auto const connectionFileDescriptor = accept(listenFileDescriptor,
                                                      reinterpret_cast<sockaddr *>(&clientAddress),
                                                      &clientSocketLength);
+
         if (connectionFileDescriptor < 0) {
             printf("accpet failed. error: %i\n", errno);
             exit(0);
         }
 
+        // make the socket non-blocking
+        fcntl(connectionFileDescriptor, F_SETFL, O_NONBLOCK);
+
         auto const pid = fork();
         if (pid ==  0) { // child process
             close(listenFileDescriptor); // ref counted so child must delete when done (on startup)
+            unsigned char buffer[5];
             
-            while (true){
-                unsigned char buffer[5];
+            while (true) {
                 auto const bytesRead = read(connectionFileDescriptor, buffer, 5);
+
+                if (bytesRead == -1) {
+                    if (errno == EWOULDBLOCK) {
+                        // no problem, just no data to read
+                        continue;
+                    }
+                    else {
+                        printf("server: connection disconnected\n");
+                        break;
+                    }
+                }
 
                 printf("buffer: %s\n", buffer);
 
@@ -64,11 +80,13 @@ int main()
             }
 
             // TODO(asoelter): look at strecho
+            close(connectionFileDescriptor);
             exit(0);
         }
 
         close(connectionFileDescriptor); // ref counted so parent must delete when done (as soon as child launched)
         printf("Parent launched child\n");
+        waitpid(pid, nullptr, 0);
     }
 
     return 0;

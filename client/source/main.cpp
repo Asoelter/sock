@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -39,13 +40,29 @@ int main()
         exit(-1);
     }
 
+    // make the socket non-blocking
+    fcntl(socketFileDescriptor, F_SETFL, O_NONBLOCK);
+
     while (true) {
         write(socketFileDescriptor, "hello", 5);
 
         unsigned char buffer[3];
-        read(socketFileDescriptor, buffer, 3);
+        auto const bytesRead = read(socketFileDescriptor, buffer, 3);
+
+        if (bytesRead == -1) {
+            if (errno == EWOULDBLOCK) {
+                // no problem, just no data to read
+            }
+            else {
+                printf("client: connection disconnected\n");
+                break;
+            }
+        }
+
         printf("buffer: %s\n", buffer);
     }
+
+    close(socketFileDescriptor);
 
     return 0;
 }
