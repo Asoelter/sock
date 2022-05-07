@@ -39,7 +39,7 @@ int main()
         exit(-1);
     }
 
-    for (int i = 0; i < 5; ++i) {
+    while (true) {
         write(socketFileDescriptor, "hello", 5);
 
         unsigned char buffer[3];

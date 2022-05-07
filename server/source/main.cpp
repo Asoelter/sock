@@ -54,7 +54,7 @@ int main()
         if (pid ==  0) { // child process
             close(listenFileDescriptor); // ref counted so child must delete when done (on startup)
             
-            for (int i = 0; i < 5; ++i){
+            while (true){
                 unsigned char buffer[5];
                 auto const bytesRead = read(connectionFileDescriptor, buffer, 5);
 
