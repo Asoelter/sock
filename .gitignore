@@ -5,3 +5,4 @@ client/build
 client/.cache
 
 build
+.cache
