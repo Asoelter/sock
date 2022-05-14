@@ -21,7 +21,7 @@ int main()
         auto const bytesRead = socket.read(buffer, 3);
 
         if (bytesRead > 0) {
-            printf("byes read: %u\tbuffer: %s\n", bytesRead, buffer);
+            printf("byes read: %li\tbuffer: %s\n", bytesRead, buffer);
         }
     }
 

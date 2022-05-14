@@ -186,7 +186,7 @@ int main()
     auto sockets = std::vector<net::TcpServer::Socket*>();
 
     server.connectHandler = [&sockets](net::TcpServer::Socket * const socket) {
-        LOG("Connected!\n");
+        LOG_NO_ARGS("Connected!\n");
         sockets.push_back(socket);
     };
 
@@ -202,7 +202,7 @@ int main()
         printf("%s(%u):bytesRead: %li, read %s\n", __PRETTY_FUNCTION__, __LINE__, bytesRead, buffer);
     };
 
-    server.closeHandler = [](net::TcpServer::Socket * const socket) {
+    server.closeHandler = [](net::TcpServer::Socket * const) {
         printf("Closing...\n");
         assert(false);
     };
