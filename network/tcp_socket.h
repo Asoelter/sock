@@ -8,6 +8,7 @@
 NETWORK_NAMESPACE_BEGIN
 
 class TcpSocket;
+class TcpServer;
 
 TcpSocket createTcpClient(const char * address, unsigned port);
 
@@ -20,9 +21,14 @@ TcpSocket createTcpClient(const char * address, unsigned port);
 class TcpSocket
 {
 public:
-    friend TcpSocket createTcpClient(const char * address, unsigned port);
+    static constexpr auto badSocketDescriptor = -1;
+    static constexpr auto badRead             = -1;
+    static constexpr auto socketClosed        =  0;
 
-    size_t read(char * const buffer, size_t size);
+    friend TcpSocket createTcpClient(const char * address, unsigned port);
+    friend class TcpServer;
+
+    long read(char * const buffer, size_t size);
     void write(char const * const buffer, size_t size);
 
     bool connected() const;
@@ -32,13 +38,9 @@ private:
               const char * address,
               unsigned port);
 
-    void markDisconnected();
+    void shutdown();
 
 private:
-
-    static constexpr auto badSocketDescriptor = -1;
-    static constexpr auto badRead             = -1;
-
     int socketFileDescriptor_;
     const char * address_;
     unsigned port_;

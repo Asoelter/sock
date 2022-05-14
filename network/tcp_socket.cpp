@@ -41,21 +41,28 @@ TcpSocket createTcpClient(const char * address, unsigned port)
     return TcpSocket(socketFileDescriptor, address, port);
 }
 
-size_t TcpSocket::read(char * const buffer, size_t size)
+long TcpSocket::read(char * const buffer, size_t size)
 {
+    errno = 0;
     auto const bytesRead = ::read(socketFileDescriptor_, buffer, size);
 
     if (bytesRead > 0) {
-        return true;
+        return bytesRead;
+    }
+    else if (bytesRead == badRead){
+        if (errno == EWOULDBLOCK) {
+            return 0;
+        }
+        // TODO(asoelter): log instead of print
+        printf("disconnecting for unknown reason\n");
+        shutdown();
+    }
+    else if (bytesRead == socketClosed) {
+        printf("shutdown requested from client\n");
     }
 
-    if (bytesRead == badRead){
-        // EWOULDBLOCK isn't a problem, just no data to read
-        if (errno != EWOULDBLOCK) {
-            // TODO(asoelter): log instead of print
-            printf("client: connection disconnected\n");
-            socketFileDescriptor_ = badSocketDescriptor;
-        }
+    if (errno != 0) {
+        assert(false);
     }
 
     return bytesRead;
@@ -87,7 +94,7 @@ TcpSocket::TcpSocket(int socketFileDescriptor,
     assert(connected());
 }
 
-void TcpSocket::markDisconnected()
+void TcpSocket::shutdown()
 {
     socketFileDescriptor_ = badSocketDescriptor;
 }
