@@ -100,8 +100,3 @@ void TcpSocket::shutdown()
 }
 
 NETWORK_NAMESPACE_END
-
-void sayHello()
-{
-    printf("hello\n");
-}

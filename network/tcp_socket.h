@@ -48,6 +48,4 @@ private:
 
 NETWORK_NAMESPACE_END
 
-void sayHello();
-
 #endif // TCP_SOCKET_H
