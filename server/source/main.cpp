@@ -195,16 +195,11 @@ int main()
         char buffer[5];
         auto const bytesRead = socket->read(buffer, 5);
 
-        if (!bytesRead) {
-            assert(false);
-        }
-
-        printf("%s(%u):bytesRead: %li, read %s\n", __PRETTY_FUNCTION__, __LINE__, bytesRead, buffer);
+        printf("readHandler: bytesRead: %li, read %s\n", bytesRead, buffer);
     };
 
     server.closeHandler = [](net::TcpServer::Socket * const) {
         printf("Closing...\n");
-        assert(false);
     };
 
     server.listen(16491);

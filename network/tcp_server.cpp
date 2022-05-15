@@ -23,7 +23,7 @@ long TcpServer::Socket::read(char * const buffer, size_t size)
 {
     auto const bytesRead = socket_.read(buffer, size);
 
-    if (bytesRead == TcpSocket::badRead) {
+    if (bytesRead == TcpSocket::badRead || bytesRead == TcpSocket::socketClosed) {
         assert(owner_ && "socket survived longer than owning server");
         owner_->stopPollingFor(this);
     }
@@ -107,7 +107,6 @@ void TcpServer::poll()
 void TcpServer::stopPollingFor(Socket* socket)
 {
     printf("stopped polling\n");
-    assert(false);
     // We could probably change our data structures
     // around to avoid having to loop through every
     // socket, but this is good for now
