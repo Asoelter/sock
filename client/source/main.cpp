@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "network/tcp_socket.h"
+#include "nylon/nylon_message.h"
 
 int main()
 {

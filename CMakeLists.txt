@@ -4,4 +4,5 @@ project("sock")
 
 add_subdirectory("client")
 add_subdirectory("network")
+add_subdirectory("nylon")
 add_subdirectory("server")
