@@ -47,40 +47,32 @@ private:
         template <typename InputIt>
         void pushInput(InputIt begin, InputIt end)
         {
-            input_.insert(input_.end(), begin, end);
+            assert(readOffset_ <= input_.size());
+            input_.insert(input_.begin() + readOffset_, begin, end);
         }
 
         long read(char * const buffer, size_t size)
         {
             size_t index = 0;
 
-            while (index < input_.size() && index < size) {
-                buffer[index] = input_[index];
-                ++index;
+            while (readOffset_ < input_.size() && index < size) {
+                buffer[index++] = input_[readOffset_++];
             }
 
-            if (index < input_.size()) { // There's still data left to send
-                rollover(index);
+            assert(readOffset_ <= input_.size());
+            if (readOffset_ == input_.size()) {
+                // we've send all data we have, can
+                // start reading/writing from the
+                // start of the buffer
+                readOffset_ = 0;
             }
 
             return index;
         }
 
     private:
-        void rollover(size_t startOfRegionToKeep)
-        {
-                // TODO(asoelter): This is an easy but hacky
-                // way to move the remaining bytes to the front
-                auto const newBuffer = std::vector<char>(
-                    input_.begin() + startOfRegionToKeep,
-                    input_.end()
-                );
-
-                input_ = newBuffer;
-
-        }
-
         std::vector<char> input_;
+        size_t readOffset_ = 0;
     };
 
 public:

@@ -93,4 +93,35 @@ MESSAGE_READER_TEST(testBasicLogonAcceptedMessage)
     pushOutputValidator(LogonAcceptedOutput(67));
 }
 
+// Send in enough messages to rollover the MessageReader
+// ring-buffer. The test fixutre's ring buffer has a size
+// of 3 * maxMessageSize. This test uses 4 max-sized messages
+// to test the scenario where there is no remainder in the
+// ring buffer when it rolls over
+MESSAGE_READER_TEST(testRollover_NoRemainder)
+{
+    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
+
+    // Send first message, 1/3 of ring buffer
+    pushInputEvent(LogonAcceptedInput(1));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(1));
+
+    // Send second message, 2/3 of ring buffer
+    pushInputEvent(LogonAcceptedInput(2));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(2));
+
+    // Send third message, 3/3 of ring buffer -> rollover
+    pushInputEvent(LogonAcceptedInput(3));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(3));
+
+    // Send fourth message, validate we can still read messages
+    // after rollover
+    pushInputEvent(LogonAcceptedInput(4));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(4));
+}
+
 #undef MESSAGE_READER_TEST
