@@ -10,7 +10,7 @@
 #       error "nylon namespace not defined"
 #   endif
 #
-#   define NYLON_NAMESPACE_BEGIN namespace NETWORK_NAMESPACE {
+#   define NYLON_NAMESPACE_BEGIN namespace NYLON_NAMESPACE {
 #endif
 
 #ifndef NYLON_NAMESPACE_END

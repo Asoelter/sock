@@ -34,8 +34,8 @@ private:
 
     Buffer sendBuffer_;
     Buffer receiveBuffer_;
-    Defered<TcpSocket> tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
-    Defered<MessageReader> messageReader_;
+    Defered<net::TcpSocket> tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
+    Defered<MessageReader<net::TcpSocket>> messageReader_;
 };
 
 NYLON_NAMESPACE_END

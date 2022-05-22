@@ -12,7 +12,7 @@ NylonClient::NylonClient(size_t bufferSize)
 
 void NylonClient::connect(const char * address, unsigned port)
 {
-    tcpSocket_ = createTcpClient(address, port);
+    tcpSocket_ = net::createTcpClient(address, port);
 }
 
 void NylonClient::poll()

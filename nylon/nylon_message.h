@@ -45,11 +45,16 @@ struct LogonAccepted
     uint8_t sessionId;
 };
 
+// It's important that these are listed
+// in the same order they appear in the
+// enum at the top of the file
 using Message = std::variant<
     HeartBeat,
     Logon,
     LogonAccepted
 >;
+
+MessageType typeOf(const Message& message);
 
 constexpr auto maxMessageSize = std::max({HeartBeat::size, Logon::size, LogonAccepted::size});
 
