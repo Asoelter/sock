@@ -15,7 +15,7 @@ std::optional<Message> MessageReader<SocketType>::read()
         return std::nullopt;
     }
 
-    auto const bytesRead = socket_->read(buffer_.data(), buffer_.size() - readOffset_);
+    auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
     readOffset_ += bytesRead;
 
     if (bytesRead < 1) {
@@ -36,7 +36,14 @@ std::optional<Message> MessageReader<SocketType>::read()
             return std::nullopt;
         }
 
-        return HeartBeat::decode(buffer_.data(), decodeOffset_);
+        auto const result = HeartBeat::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+
+        if (decodeOffset_ == buffer_.size()) {
+            // catch edge case where the buffer is exactly full
+            rollover();
+        }
+
+        return result;
     }
     else if (messageType == static_cast<char>(Logon::messageType)) {
         if (readableBytes < Logon::size) {
@@ -49,7 +56,14 @@ std::optional<Message> MessageReader<SocketType>::read()
             return std::nullopt;
         }
 
-        return Logon::decode(buffer_.data(), decodeOffset_);
+        auto const result = Logon::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+
+        if (decodeOffset_ == buffer_.size()) {
+            // catch edge case where the buffer is exactly full
+            rollover();
+        }
+
+        return result;
     }
     else if (messageType == static_cast<char>(LogonAccepted::messageType)) {
         if (readableBytes < LogonAccepted::size) {
@@ -62,7 +76,14 @@ std::optional<Message> MessageReader<SocketType>::read()
             return std::nullopt;
         }
 
-        return LogonAccepted::decode(buffer_.data(), decodeOffset_);
+        auto const result = LogonAccepted::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+
+        if (decodeOffset_ == buffer_.size()) {
+            // catch edge case where the buffer is exactly full
+            rollover();
+        }
+
+        return result;
     }
 
     // TODO(asoelter): Log instead of printf

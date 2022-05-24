@@ -47,24 +47,37 @@ private:
         template <typename InputIt>
         void pushInput(InputIt begin, InputIt end)
         {
-            assert(readOffset_ <= input_.size());
-            input_.insert(input_.begin() + readOffset_, begin, end);
+            assert(writeOffset_ <= input_.size());
+
+            size_t const bytesNeeded = std::distance(begin, end);
+
+            if (input_.size() - writeOffset_ < bytesNeeded) {
+                auto const bytesAvailable = input_.size() - writeOffset_;
+                auto const growthNeeded = bytesNeeded - bytesAvailable;
+                input_.resize(growthNeeded);
+            }
+
+            for(; begin < end; ++begin) {
+                input_[writeOffset_++] = *begin;
+            }
         }
 
         long read(char * const buffer, size_t size)
         {
             size_t index = 0;
 
-            while (readOffset_ < input_.size() && index < size) {
+            // writeOffset_ is the end of readable data
+            while (readOffset_ < writeOffset_ && index < size) {
                 buffer[index++] = input_[readOffset_++];
             }
 
             assert(readOffset_ <= input_.size());
             if (readOffset_ == input_.size()) {
-                // we've send all data we have, can
+                // we've sent all data we have, can
                 // start reading/writing from the
                 // start of the buffer
-                readOffset_ = 0;
+                readOffset_  = 0;
+                writeOffset_ = 0;
             }
 
             return index;
@@ -72,7 +85,8 @@ private:
 
     private:
         std::vector<char> input_;
-        size_t readOffset_ = 0;
+        size_t readOffset_  = 0;
+        size_t writeOffset_ = 0;
     };
 
 public:
@@ -198,7 +212,11 @@ public:
             auto & la = std::get<nylon::LogonAccepted>(message);
 
             if (la.sessionId != sessionId) {
-                ADD_FAILURE_AT(file, line) << "Mismatched sessionsIds. Received" << la.sessionId << " expected " << sessionId;
+                ADD_FAILURE_AT(file, line)
+                    << "Mismatched sessionsIds. Received: "
+                    << static_cast<int>(la.sessionId)
+                    << " expected "
+                    << static_cast<int>(sessionId);
             }
         }
 

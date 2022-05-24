@@ -20,8 +20,8 @@ void HeartBeat::encode(char * buffer, size_t& size)
         throw std::runtime_error("HeartBeat::decode asked to decode a non-HeartBeat");
     }
 
-    --buffer;
-    --size;
+    ++buffer;
+    ++size;
 
     return {};
 }
@@ -41,8 +41,8 @@ void Logon::encode(char * buffer, size_t& size)
         throw std::runtime_error("Logon::decode asked to decode a non-Logon");
     }
 
-    --buffer;
-    --size;
+    ++buffer;
+    ++size;
 
     return {};
 }
@@ -68,14 +68,14 @@ void LogonAccepted::encode(char * buffer, size_t& size)
     }
 
     ++buffer;
-    --size;
+    ++size;
 
     auto result = LogonAccepted();
 
     memcpy(&result.sessionId, buffer, sizeof(uint8_t));
 
     buffer += sizeof(uint8_t);
-    size   -= sizeof(uint8_t);
+    size   += sizeof(uint8_t);
 
     return result;
 }
