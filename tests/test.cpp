@@ -124,4 +124,38 @@ MESSAGE_READER_TEST(testRollover_NoRemainder)
     pushOutputValidator(LogonAcceptedOutput(4));
 }
 
+MESSAGE_READER_TEST(testRollover_Remainder)
+{
+    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
+
+    // Send first, byte sized, message, 1/6 of ring buffer
+    pushInputEvent(LogonInput());
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonOutput());
+
+    // Send second message, 3/6 of ring buffer
+    pushInputEvent(LogonAcceptedInput(1));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(1));
+
+    // Send third message, 5/6 of ring buffer
+    pushInputEvent(LogonAcceptedInput(2));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(2));
+
+    // Send fourth message, 7/6 of ring buffer -> rollover, can't read this message
+    pushInputEvent(LogonAcceptedInput(3));
+    pushInputEvent(ReadInput());
+
+    // Send fifth message, there should be two messages in the ringbuffer now and
+    // read should return the first
+    pushInputEvent(LogonAcceptedInput(4));
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(3)); //< previous message
+
+    // There's still a message in the buffer, validate read returns it
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(4));
+}
+
 #undef MESSAGE_READER_TEST

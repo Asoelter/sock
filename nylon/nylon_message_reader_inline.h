@@ -18,18 +18,17 @@ std::optional<Message> MessageReader<SocketType>::read()
     auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
     readOffset_ += bytesRead;
 
-    if (bytesRead < 1) {
-        return std::nullopt; //connected() will be set to false next time
-    }
-
     auto const messageType = buffer_[decodeOffset_];
     auto const readableBytes = readOffset_ - decodeOffset_;
 
     if (messageType == static_cast<char>(HeartBeat::messageType)) {
         if (readableBytes < HeartBeat::size) {
-            auto const bytesLeft = buffer_.size() - readOffset_;
+            auto const bytesLeft = buffer_.size() - decodeOffset_;
 
-            if (bytesLeft > HeartBeat::size) {
+            // Only roll over if there isn't enough room. If it was
+            // a partial read there could be enough room in our buffer,
+            // but we just need to read again to get the rest of the message
+            if (bytesLeft < HeartBeat::size) {
                 rollover();
             }
 
@@ -47,9 +46,12 @@ std::optional<Message> MessageReader<SocketType>::read()
     }
     else if (messageType == static_cast<char>(Logon::messageType)) {
         if (readableBytes < Logon::size) {
-            auto const bytesLeft = buffer_.size() - readOffset_;
+            auto const bytesLeft = buffer_.size() - decodeOffset_;
 
-            if (bytesLeft > Logon::size) {
+            // Only roll over if there isn't enough room. If it was
+            // a partial read there could be enough room in our buffer,
+            // but we just need to read again to get the rest of the message
+            if (bytesLeft < Logon::size) {
                 rollover();
             }
 
@@ -67,9 +69,12 @@ std::optional<Message> MessageReader<SocketType>::read()
     }
     else if (messageType == static_cast<char>(LogonAccepted::messageType)) {
         if (readableBytes < LogonAccepted::size) {
-            auto const bytesLeft = buffer_.size() - readOffset_;
+            auto const bytesLeft = buffer_.size() - decodeOffset_;
 
-            if (bytesLeft > LogonAccepted::size) {
+            // Only roll over if there isn't enough room. If it was
+            // a partial read there could be enough room in our buffer,
+            // but we just need to read again to get the rest of the message
+            if (bytesLeft < LogonAccepted::size) {
                 rollover();
             }
 
@@ -96,7 +101,7 @@ std::optional<Message> MessageReader<SocketType>::read()
 template <typename SocketType>
 void MessageReader<SocketType>::rollover()
 {
-    auto const srcBegin  = buffer_.begin() + readOffset_;
+    auto const srcBegin  = buffer_.begin() + decodeOffset_;
     auto const srcEnd    = buffer_.end();
     auto const destBegin = buffer_.begin();
 

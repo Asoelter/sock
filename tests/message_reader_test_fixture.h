@@ -51,10 +51,11 @@ private:
 
             size_t const bytesNeeded = std::distance(begin, end);
 
-            if (input_.size() - writeOffset_ < bytesNeeded) {
-                auto const bytesAvailable = input_.size() - writeOffset_;
+            auto const bytesAvailable = input_.size() - writeOffset_;
+
+            if (bytesAvailable < bytesNeeded) {
                 auto const growthNeeded = bytesNeeded - bytesAvailable;
-                input_.resize(growthNeeded);
+                input_.resize(input_.size() + growthNeeded);
             }
 
             for(; begin < end; ++begin) {
@@ -69,6 +70,10 @@ private:
             // writeOffset_ is the end of readable data
             while (readOffset_ < writeOffset_ && index < size) {
                 buffer[index++] = input_[readOffset_++];
+            }
+
+            if (readOffset_ > input_.size()) {
+                printf("Error: readOffset_ > input_.size(). readOffset_ = %lu, input_.size() = %lu\n", readOffset_, input_.size());
             }
 
             assert(readOffset_ <= input_.size());
