@@ -17,6 +17,7 @@ class NylonClient
 {
 public:
     using MessageHandler = std::function<void(Message&&)>;
+    using CloseHandler = std::function<void()>;
 
     NylonClient(size_t bufferSize);
 
@@ -25,6 +26,7 @@ public:
     void send(Message const & message);
 
     MessageHandler messageHandler;
+    CloseHandler closeHandler;
 
 private:
     using Buffer = std::vector<unsigned char>;
@@ -32,8 +34,8 @@ private:
     template<typename T>
     using Defered = std::optional<T>;
 
+    size_t bufferSize_;
     Buffer sendBuffer_;
-    Buffer receiveBuffer_;
     Defered<net::TcpSocket> tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
     Defered<MessageReader<net::TcpSocket>> messageReader_;
 };
