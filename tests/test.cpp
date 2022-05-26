@@ -158,4 +158,68 @@ MESSAGE_READER_TEST(testRollover_Remainder)
     pushOutputValidator(LogonAcceptedOutput(4));
 }
 
+// Same as testRollover_NoRemainder but don't call
+// read until all of the messages are in
+MESSAGE_READER_TEST(testRollover_BuildUpNoRemainder)
+{
+    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
+
+    pushInputEvent(LogonAcceptedInput(1));
+    pushInputEvent(LogonAcceptedInput(2));
+    pushInputEvent(LogonAcceptedInput(3));
+    pushInputEvent(LogonAcceptedInput(4));
+
+    // Read first message, 1/3 of ring buffer
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(1));
+
+    // Read second message, 2/3 of ring buffer
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(2));
+
+    // Read third message, 3/3 of ring buffer -> rollover
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(3));
+
+    // Read fourth message, validate we can still read messages
+    // after rollover
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(4));
+}
+
+MESSAGE_READER_TEST(testRollover_BuildUpRemainder)
+{
+    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
+
+    pushInputEvent(LogonInput());
+    pushInputEvent(LogonAcceptedInput(1));
+    pushInputEvent(LogonAcceptedInput(2));
+    pushInputEvent(LogonAcceptedInput(3));
+    pushInputEvent(LogonAcceptedInput(4));
+
+    // Read first, byte sized, message, 1/6 of ring buffer
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonOutput());
+
+    // Read second message, 3/6 of ring buffer
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(1));
+
+    // Read third message, 5/6 of ring buffer
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(2));
+
+    // Read fourth message, 7/6 of ring buffer -> rollover, can't read this message
+    pushInputEvent(ReadInput());
+
+    // Read fifth message, there should be two messages in the ringbuffer now and
+    // read should return the first
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(3)); //< previous message
+
+    // There's still a message in the buffer, validate read returns it
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(4));
+}
+
 #undef MESSAGE_READER_TEST
