@@ -11,19 +11,21 @@
 
 #include "network/tcp_socket.h"
 #include "nylon/nylon_message.h"
+#include "nylon/nylon_client.h"
 
 int main()
 {
-    auto socket = net::createTcpClient("127.0.0.1", 16491);
-    char buffer[3];
+    auto client = nylon::NylonClient(10 * nylon::maxMessageSize);
 
-    while (socket.connected()) {
-        socket.write("hello", 5);
-        auto const bytesRead = socket.read(buffer, 3);
+    client.connect("127.0.0.1", 16491);
 
-        if (bytesRead > 0) {
-            printf("byes read: %li\tbuffer: %s\n", bytesRead, buffer);
-        }
+    client.messageHandler = [](nylon::Message&& m) {
+        printf("received %s message\n", nylon::nameOf(m));
+    };
+
+    while (true) {
+        client.poll();
+        client.send(nylon::Logon());
     }
 
     return 0;

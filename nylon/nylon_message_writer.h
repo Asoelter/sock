@@ -7,6 +7,7 @@
 
 #include "namespace.h"
 
+#include <string>
 #include <vector>
 
 NYLON_NAMESPACE_BEGIN

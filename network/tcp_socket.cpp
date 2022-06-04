@@ -49,7 +49,7 @@ long TcpSocket::read(char * const buffer, size_t size)
     if (bytesRead > 0) {
         return bytesRead;
     }
-    else if (bytesRead == badRead){
+    else if (bytesRead == badRead) {
         if (errno == EWOULDBLOCK) {
             return 0;
         }
