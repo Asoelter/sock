@@ -29,7 +29,7 @@ public:
     friend class TcpServer;
 
     long read(char * const buffer, size_t size);
-    void write(char const * const buffer, size_t size);
+    long write(char const * const buffer, size_t size);
 
     bool connected() const;
 

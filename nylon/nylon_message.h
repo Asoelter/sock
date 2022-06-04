@@ -21,8 +21,8 @@ struct HeartBeat
     static constexpr auto messageType = MessageType::HeartBeat;
     static constexpr auto size = sizeof(uint8_t);
 
-    void encode(char * buffer, size_t& size);
-    static HeartBeat decode(char const * buffer, size_t& size);
+    void encode(char ** buffer, size_t& size) const;
+    [[nodiscard]] static HeartBeat decode(char const * buffer, size_t& size);
 };
 
 struct Logon
@@ -30,8 +30,8 @@ struct Logon
     static constexpr auto messageType = MessageType::Logon;
     static constexpr auto size = sizeof(uint8_t);
 
-    void encode(char * buffer, size_t& size);
-    static Logon decode(char const * buffer, size_t& size);
+    void encode(char ** buffer, size_t& size) const;
+    [[nodiscard]] static Logon decode(char const * buffer, size_t& size);
 };
 
 struct LogonAccepted
@@ -39,8 +39,8 @@ struct LogonAccepted
     static constexpr auto messageType = MessageType::LogonAccepted;
     static constexpr auto size = sizeof(uint8_t) + sizeof(uint8_t);
 
-    void encode(char * buffer, size_t& size);
-    static LogonAccepted decode(char const * buffer, size_t& size);
+    void encode(char ** buffer, size_t& size) const;
+    [[nodiscard]] static LogonAccepted decode(char const * buffer, size_t& size);
 
     uint8_t sessionId;
 };
@@ -55,6 +55,7 @@ using Message = std::variant<
 >;
 
 MessageType typeOf(const Message& message);
+const char * nameOf(const Message& message);
 
 constexpr auto maxMessageSize = std::max({HeartBeat::size, Logon::size, LogonAccepted::size});
 

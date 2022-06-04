@@ -6,6 +6,7 @@
 #include "namespace.h"
 #include "nylon_message.h"
 #include "nylon_message_reader.h"
+#include "nylon_message_writer.h"
 
 #include <functional>
 #include <optional>
@@ -38,6 +39,7 @@ private:
     Buffer sendBuffer_;
     Defered<net::TcpSocket> tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
     Defered<MessageReader<net::TcpSocket>> messageReader_;
+    Defered<MessageWriter<net::TcpSocket>> messageWriter_;
 };
 
 NYLON_NAMESPACE_END

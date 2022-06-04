@@ -68,7 +68,7 @@ long TcpSocket::read(char * const buffer, size_t size)
     return bytesRead;
 }
 
-void TcpSocket::write(char const * const buffer, size_t size)
+long TcpSocket::write(char const * const buffer, size_t size)
 {
     assert(connected());
 
@@ -76,7 +76,7 @@ void TcpSocket::write(char const * const buffer, size_t size)
         throw std::runtime_error("TcpSocket::write called on disconnected socket");
     }
 
-    ::write(socketFileDescriptor_, buffer, size);
+    return ::write(socketFileDescriptor_, buffer, size);
 }
 
 bool TcpSocket::connected() const

@@ -5,10 +5,10 @@
 
 NYLON_NAMESPACE_BEGIN
 
-void HeartBeat::encode(char * buffer, size_t& size)
+void HeartBeat::encode(char ** buffer, size_t& size) const
 {
-    *buffer = static_cast<char>(messageType);
-    ++buffer;
+    **buffer = static_cast<char>(messageType);
+    ++(*buffer);
     --size;
 }
 
@@ -26,10 +26,10 @@ void HeartBeat::encode(char * buffer, size_t& size)
     return {};
 }
 
-void Logon::encode(char * buffer, size_t& size)
+void Logon::encode(char ** buffer, size_t& size) const
 {
-    *buffer = static_cast<char>(messageType);
-    ++buffer;
+    **buffer = static_cast<char>(messageType);
+    ++(*buffer);
     --size;
 }
 
@@ -47,16 +47,16 @@ void Logon::encode(char * buffer, size_t& size)
     return {};
 }
 
-void LogonAccepted::encode(char * buffer, size_t& size)
+void LogonAccepted::encode(char ** buffer, size_t& size) const
 {
-    *buffer = static_cast<char>(messageType);
-    ++buffer;
+    **buffer = static_cast<char>(messageType);
+    ++(*buffer);
     --size;
 
-    memcpy(buffer, &sessionId, sizeof(uint8_t));
+    memcpy(*buffer, &sessionId, sizeof(uint8_t));
 
-    buffer += sizeof(uint8_t);
-    size   -= sizeof(uint8_t);
+    *buffer += sizeof(uint8_t);
+    size    -= sizeof(uint8_t);
 }
 
 /*static*/ LogonAccepted LogonAccepted::decode(char const * buffer, size_t& size)
@@ -92,6 +92,30 @@ MessageType typeOf(const Message& message)
         || typeAsSizeT == static_cast<size_t>(MessageType::LogonAccepted));
 
     return static_cast<MessageType>(typeAsSizeT);
+}
+
+const char * nameOf(const Message& message)
+{
+    auto const type = typeOf(message);
+
+    switch(type) {
+        case MessageType::HeartBeat:
+        {
+            return "HeartBeat";
+        } break;
+        case MessageType::Logon:
+        {
+            return "Logon";
+        } break;
+        case MessageType::LogonAccepted:
+        {
+            return "LogonAccepted";
+        } break;
+    };
+
+    printf("unknown message type: %u\n", static_cast<unsigned>(type));
+    assert(!"unknown message type");
+    return "";
 }
 
 NYLON_NAMESPACE_END

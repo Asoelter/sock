@@ -15,6 +15,7 @@ void NylonClient::connect(const char * address, unsigned port)
     tcpSocket_ = net::createTcpClient(address, port);
 
     messageReader_ = MessageReader(&*tcpSocket_, bufferSize_);
+    messageWriter_ = MessageWriter(&*tcpSocket_);
 }
 
 void NylonClient::poll()
@@ -32,6 +33,7 @@ void NylonClient::poll()
     if (!messageReader_) {
         // TODO(asoelter): log not print
         printf("poll called without message reader\n");
+        return;
     }
 
     while (true) { // read until read fails (no more messages)
@@ -48,7 +50,13 @@ void NylonClient::poll()
 
 void NylonClient::send(Message const & message)
 {
+    if (!messageWriter_) {
+        // TODO(asoelter): log not print
+        printf("send called without message reader\n");
+        return;
+    }
 
+    messageWriter_->write(message);
 }
 
 NYLON_NAMESPACE_END

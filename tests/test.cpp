@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "message_reader_test_fixture.h"
+#include "message_writer_test_fixture.h"
 
 #define MESSAGE_TEST(name) TEST(NylonMessage, name)
 
@@ -9,11 +10,14 @@ MESSAGE_TEST(testHeartBeatEncoding)
     nylon::HeartBeat hb;
 
     char output[nylon::HeartBeat::size + 1]; // +1 for null terminator
+    char * outPtrBefore = output;
+    char * outPtrAfter  = outPtrBefore;
     auto size = nylon::HeartBeat::size;
 
-    hb.encode(output, size);
+    hb.encode(&outPtrAfter, size);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::HeartBeat::messageType));
+    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::HeartBeat::size);
     EXPECT_EQ(size, 0);
 }
 
@@ -22,11 +26,14 @@ MESSAGE_TEST(testLogonEncoding)
     nylon::Logon l;
 
     char output[nylon::Logon::size + 1]; // +1 for null terminator
+    char * outPtrBefore = output;
+    char * outPtrAfter  = outPtrBefore;
     auto size = nylon::Logon::size;
 
-    l.encode(output, size);
+    l.encode(&outPtrAfter, size);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::Logon::messageType));
+    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::Logon::size);
     EXPECT_EQ(size, 0);
 }
 
@@ -36,11 +43,14 @@ MESSAGE_TEST(testLogonAcceptedEncoding)
     la.sessionId = 5;
 
     char output[nylon::LogonAccepted::size + 1]; // +1 for null terminator
+    char * outPtrBefore = output;
+    char * outPtrAfter  = outPtrBefore;
     auto encodeSize = nylon::LogonAccepted::size;
 
-    la.encode(output, encodeSize);
+    la.encode(&outPtrAfter, encodeSize);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::LogonAccepted::messageType));
+    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::LogonAccepted::size);
     EXPECT_EQ(output[1], la.sessionId);
     EXPECT_EQ(encodeSize, 0);
 
@@ -223,3 +233,40 @@ MESSAGE_READER_TEST(testRollover_BuildUpRemainder)
 }
 
 #undef MESSAGE_READER_TEST
+
+#define MESSAGE_WRITER_TEST(name) TEST_F(MessageWriterTestFixture, name)
+
+MESSAGE_WRITER_TEST(testBasicHeartBeatMessage)
+{
+    pushInputEvent(HeartBeatInput());
+    pushOutputValidator(HeartBeatOutput());
+}
+
+MESSAGE_WRITER_TEST(testBasicLogonMessage)
+{
+    pushInputEvent(LogonInput());
+    pushOutputValidator(LogonOutput());
+}
+
+MESSAGE_WRITER_TEST(testBasicLogonAcceptedMessage)
+{
+    pushInputEvent(LogonAcceptedInput(67));
+    pushOutputValidator(LogonAcceptedOutput(67));
+}
+
+MESSAGE_WRITER_TEST(testMultipleMessages)
+{
+    // grows internal buffer to 1 byte
+    pushInputEvent(HeartBeatInput());
+    pushOutputValidator(HeartBeatOutput());
+
+    // grows internal buffer to 2 bytes
+    pushInputEvent(LogonAcceptedInput(67));
+    pushOutputValidator(LogonAcceptedOutput(67));
+
+    // send another 1 byte message
+    pushInputEvent(LogonInput());
+    pushOutputValidator(LogonOutput());
+}
+
+#undef MESSAGE_WRITER_TEST
