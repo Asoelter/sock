@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 NETWORK_NAMESPACE_BEGIN
@@ -18,16 +19,20 @@ public:
     class Socket
     {
     public:
+        using Id = size_t;
+
         long read(char * const buffer, size_t size);
         void write(char const * const buffer, size_t size);
+        Id id() const noexcept;
 
     private:
         friend class TcpServer;
-        Socket(TcpServer* owner, int fd, const char * address, unsigned port);
+        Socket(TcpServer* owner, int fd, const char * address, unsigned port, Id id);
 
     private:
         TcpServer* owner_;
-        TcpSocket socket_;
+        TcpSocket  socket_;
+        Id         id_;
     };
 
     using ConnectHandler = std::function<void(Socket * const)>;
@@ -48,11 +53,15 @@ private:
     void stopPollingFor(Socket* socket);
 
 private:
-    using Sockets = std::vector<std::unique_ptr<Socket>>;
+    using Sockets   = std::vector<std::unique_ptr<Socket>>;
+    using SocketMap = std::unordered_map<Socket::Id, size_t /*socket index*/>;
+    using PollFds   = std::vector<struct pollfd>;
 
-    Sockets sockets_;
-    std::vector<struct pollfd> pollfds_; //< pollfds for the sockets pollfds[i] is for sockets_[i - 1] because pollfds[i] is for the listenSocket
-    int listenFileDescriptor_ = TcpSocket::badSocketDescriptor;
+    Sockets    sockets_;
+    PollFds    pollfds_; //< pollfds for the sockets. pollfds[i] is for sockets_[i - 1] because pollfds[i] is for the listenSocket
+    SocketMap  socketMap_;
+    int        listenFileDescriptor_ = TcpSocket::badSocketDescriptor;
+    Socket::Id nextId = 1;
 };
 
 NETWORK_NAMESPACE_END

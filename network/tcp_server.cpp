@@ -12,9 +12,10 @@
 
 NETWORK_NAMESPACE_BEGIN
 
-TcpServer::Socket::Socket(TcpServer* owner, int fd, const char * address, unsigned port)
+TcpServer::Socket::Socket(TcpServer* owner, int fd, const char * address, unsigned port, Id id)
     : owner_(owner)
     , socket_(fd, address, port)
+    , id_(id)
 {
 
 }
@@ -31,6 +32,11 @@ long TcpServer::Socket::read(char * const buffer, size_t size)
     return bytesRead;
 }
 
+TcpServer::Socket::Id TcpServer::Socket::id() const noexcept
+{
+    return id_;
+}
+
 void TcpServer::listen(unsigned port)
 {
     listenFileDescriptor_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -40,6 +46,12 @@ void TcpServer::listen(unsigned port)
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
     serverAddress.sin_port = htons(port);
+
+    int yes = 1;
+    if (setsockopt(listenFileDescriptor_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+        assert(!"unable to set reuse addr");
+        throw std::runtime_error("unable to set reuse addr");
+    }
 
     auto result = bind(listenFileDescriptor_,
                        reinterpret_cast<struct sockaddr *>(&serverAddress),
@@ -84,8 +96,10 @@ void TcpServer::poll()
 
             pollfds_.push_back({.fd = connectionFileDescriptor, .events = POLLIN}); // POLLIN: tell me when they're ready to read
 
+            auto const nextSocketIndex = sockets_.size();
             // raw new because of private/friend constructor
-            sockets_.push_back(std::unique_ptr<Socket>(new Socket(this, connectionFileDescriptor, nullptr, 0)));
+            sockets_.push_back(std::unique_ptr<Socket>(new Socket(this, connectionFileDescriptor, nullptr, 0, nextId)));
+            socketMap_.emplace(nextId++, nextSocketIndex);
 
             if (connectHandler) {
                 connectHandler(sockets_.back().get());
@@ -104,6 +118,7 @@ void TcpServer::poll()
     }
 }
 
+//#if 0
 void TcpServer::stopPollingFor(Socket* socket)
 {
     printf("stopped polling\n");
@@ -141,5 +156,74 @@ void TcpServer::stopPollingFor(Socket* socket)
     // on a socket that doesn't exist
     assert(false);
 }
+//#endif
+
+#if 0
+void TcpServer::stopPollingFor(Socket* socket)
+{
+    assert(socket);
+
+    if (!socket) {
+        printf("%s called on null socket\n", __PRETTY_FUNCTION__);
+        return;
+    }
+
+    auto const socketId = socket->id();
+    auto const socketIt = socketMap_.find(socketId);
+
+    if (socketIt == socketMap_.end()) {
+        printf("%s called on unrecognized socket: %lu\n", __PRETTY_FUNCTION__, socketId);
+        assert(!"unrecognized socket");
+        return;
+    }
+
+    auto const socketIndex = socketIt->second;
+    auto const pollFdIndex = socketIndex + 1;
+
+    assert(socketIndex < sockets_.size());
+    assert(pollFdIndex < pollfds_.size());
+
+    if (socketIndex >= sockets_.size()) {
+        printf("%s called on unrecognized socket(2)\n", __PRETTY_FUNCTION__);
+        return;
+    }
+
+    if (pollFdIndex >= pollfds_.size()) {
+        printf("%s called on unrecognized pollfd\n", __PRETTY_FUNCTION__);
+        return;
+    }
+
+    if (closeHandler) {
+        closeHandler(socket);
+    }
+
+    if (sockets_.empty()) {
+        // There was only one socket, no need to update anything
+        printf("stopped listening for socket (id = %lu)\n", socketId);
+        return;
+    }
+
+    printf("after call to close handler\n");
+
+    auto const  backSocketIndex = sockets_.size() - 1;
+    auto const  backPollFdIndex = pollfds_.size() - 1;
+    auto const& backSocket      = sockets_[backSocketIndex];
+
+    printf("before swaps\n");
+    std::swap(sockets_[socketIndex], sockets_[backSocketIndex]);
+    std::swap(pollfds_[pollFdIndex], pollfds_[backPollFdIndex]);
+
+    printf("before pops\n");
+    sockets_.pop_back();
+    pollfds_.pop_back();
+
+    printf("before updated\n");
+    auto const backSocketIt = socketMap_.find(backSocket->id());
+    assert(backSocketIt != socketMap_.end());
+    backSocketIt->second = socketIndex;
+
+    printf("stopped listening for socket (id = %lu)\n", socketId);
+}
+#endif
 
 NETWORK_NAMESPACE_END

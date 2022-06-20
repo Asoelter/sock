@@ -33,6 +33,8 @@ void MessageWriter<SocketType>::growBuffer(size_t size)
     auto const wasEmpty      = buffer_.empty();
     auto const beginDistance = std::distance(&*buffer_.begin(), begin_);
     auto const endDistance   = std::distance(&*buffer_.begin(), end_);
+    assert(beginDistance >= 0);
+    assert(endDistance >= 0);
 
     buffer_.resize(buffer_.size() + size);
 
@@ -51,7 +53,10 @@ void MessageWriter<SocketType>::growBuffer(size_t size)
 template<typename SocketType>
 void MessageWriter<SocketType>::shiftForward()
 {
+    auto const occupiedSize = std::distance(begin_, end_);
     std::copy(&*buffer_.begin(), begin_, end_);
+    begin_ = &*buffer_.begin();
+    end_ = begin_ + occupiedSize;
 }
 
 template<typename SocketType>
@@ -63,7 +68,6 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
         growBuffer(MsgType::size);
     }
 
-    //size_t const spaceAtBackOfBuffer = (&*buffer_.end()) - end_;
     size_t const spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
 
     if (spaceAtBackOfBuffer < MsgType::size) {
@@ -87,6 +91,7 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
 
     assert(socket_->connected());
     auto const bytesWritten = socket_->write(begin_, end_ - begin_);
+    assert(bytesWritten >= 0);
 
     begin_ += bytesWritten;
 }

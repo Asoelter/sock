@@ -62,7 +62,7 @@ long TcpSocket::read(char * const buffer, size_t size)
     }
 
     if (errno != 0) {
-        assert(false);
+        throw std::runtime_error("TcpSocket::write: Error: " + std::string(strerror(errno)));
     }
 
     return bytesRead;
@@ -76,7 +76,18 @@ long TcpSocket::write(char const * const buffer, size_t size)
         throw std::runtime_error("TcpSocket::write called on disconnected socket");
     }
 
-    return ::write(socketFileDescriptor_, buffer, size);
+    errno = 0;
+    auto const bytesWritten = ::write(socketFileDescriptor_, buffer, size);
+
+    if (bytesWritten == badWrite) {
+        if (errno == EWOULDBLOCK) {
+            return 0;
+        }
+
+        throw std::runtime_error("TcpSocket::write: Error: " + std::string(strerror(errno)));
+    }
+
+    return bytesWritten;
 }
 
 bool TcpSocket::connected() const

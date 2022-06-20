@@ -23,6 +23,7 @@ class TcpSocket
 public:
     static constexpr auto badSocketDescriptor = -1;
     static constexpr auto badRead             = -1;
+    static constexpr auto badWrite            = -1;
     static constexpr auto socketClosed        =  0;
 
     friend TcpSocket createTcpClient(const char * address, unsigned port);

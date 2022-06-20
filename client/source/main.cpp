@@ -17,15 +17,20 @@ int main()
 {
     auto client = nylon::NylonClient(10 * nylon::maxMessageSize);
 
-    client.connect("127.0.0.1", 16491);
+    client.connect("127.0.0.1", 16492);
 
     client.messageHandler = [](nylon::Message&& m) {
         printf("received %s message\n", nylon::nameOf(m));
     };
 
+    unsigned msgCount = 1;
+
     while (true) {
         client.poll();
-        client.send(nylon::Logon());
+        auto payload = nylon::LogonAccepted();
+        payload.sessionId = 67;
+        client.send(payload);
+        printf("sending message %u\n", msgCount++);
     }
 
     return 0;
