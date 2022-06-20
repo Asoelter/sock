@@ -32,6 +32,11 @@ long TcpServer::Socket::read(char * const buffer, size_t size)
     return bytesRead;
 }
 
+void TcpServer::Socket::write(char const * const buffer, size_t size)
+{
+    socket_.write(buffer, size);
+}
+
 TcpServer::Socket::Id TcpServer::Socket::id() const noexcept
 {
     return id_;

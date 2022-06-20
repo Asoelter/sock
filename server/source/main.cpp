@@ -47,6 +47,10 @@ int main()
 
     while (true) {
         server.poll();
+
+        for (auto* socket : sockets) {
+            socket->write("\0", 1);
+        }
     }
 
     return 0;
