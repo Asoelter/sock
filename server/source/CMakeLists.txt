@@ -7,3 +7,4 @@ target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wpedantic -Werror)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ../../)
 target_link_libraries(${PROJECT_NAME} network)
+target_link_libraries(${PROJECT_NAME} nylon)

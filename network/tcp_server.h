@@ -24,6 +24,7 @@ public:
         long read(char * const buffer, size_t size);
         void write(char const * const buffer, size_t size);
         Id id() const noexcept;
+        bool connected() const;
 
     private:
         friend class TcpServer;

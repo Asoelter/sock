@@ -42,6 +42,11 @@ TcpServer::Socket::Id TcpServer::Socket::id() const noexcept
     return id_;
 }
 
+bool TcpServer::Socket::connected() const
+{
+    return socket_.connected();
+}
+
 void TcpServer::listen(unsigned port)
 {
     listenFileDescriptor_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -123,7 +128,7 @@ void TcpServer::poll()
     }
 }
 
-//#if 0
+#if 0
 void TcpServer::stopPollingFor(Socket* socket)
 {
     printf("stopped polling\n");
@@ -161,9 +166,8 @@ void TcpServer::stopPollingFor(Socket* socket)
     // on a socket that doesn't exist
     assert(false);
 }
-//#endif
+#endif
 
-#if 0
 void TcpServer::stopPollingFor(Socket* socket)
 {
     assert(socket);
@@ -190,22 +194,18 @@ void TcpServer::stopPollingFor(Socket* socket)
 
     if (socketIndex >= sockets_.size()) {
         printf("%s called on unrecognized socket(2)\n", __PRETTY_FUNCTION__);
+        assert(!"unrecognized socket");
         return;
     }
 
     if (pollFdIndex >= pollfds_.size()) {
         printf("%s called on unrecognized pollfd\n", __PRETTY_FUNCTION__);
+        assert(!"unrecognized pollfd");
         return;
     }
 
     if (closeHandler) {
         closeHandler(socket);
-    }
-
-    if (sockets_.empty()) {
-        // There was only one socket, no need to update anything
-        printf("stopped listening for socket (id = %lu)\n", socketId);
-        return;
     }
 
     printf("after call to close handler\n");
@@ -222,6 +222,12 @@ void TcpServer::stopPollingFor(Socket* socket)
     sockets_.pop_back();
     pollfds_.pop_back();
 
+    if (sockets_.empty()) {
+        // There was only one socket, no need to update anything
+        printf("stopped listening for socket (id = %lu)\n", socketId);
+        return;
+    }
+
     printf("before updated\n");
     auto const backSocketIt = socketMap_.find(backSocket->id());
     assert(backSocketIt != socketMap_.end());
@@ -229,6 +235,5 @@ void TcpServer::stopPollingFor(Socket* socket)
 
     printf("stopped listening for socket (id = %lu)\n", socketId);
 }
-#endif
 
 NETWORK_NAMESPACE_END

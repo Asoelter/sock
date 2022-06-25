@@ -12,6 +12,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "nylon/nylon_server.h"
+
+//#define USE_OLD
+
+#ifdef USE_OLD
 int main()
 {
     auto server = net::TcpServer();
@@ -55,3 +60,46 @@ int main()
 
     return 0;
 }
+
+#else
+
+int main()
+{
+    auto server = nylon::Server(15 * nylon::maxMessageSize);
+
+    server.listen(16492);
+
+    server.connectHandler = [](nylon::Server::Socket*) {
+        printf("connected!\n");
+    };
+
+    server.readHandler = [](nylon::Message&& msg) {
+        if (std::holds_alternative<nylon::HeartBeat>(msg)) {
+            printf("MessageType: HeartBeat\n");
+        }
+        else if (std::holds_alternative<nylon::Logon>(msg)) {
+            printf("MessageType: Logon\n");
+        }
+        else if (std::holds_alternative<nylon::LogonAccepted>(msg)) {
+            auto la = std::get<nylon::LogonAccepted>(msg);
+            printf("MessageType: LogonAccepted\n");
+            printf("\tsessionId: %u\n", la.sessionId);
+        }
+        else {
+            assert(!"unrecognized message type");
+        }
+
+        printf("\n");
+    };
+
+    server.closeHandler = [](nylon::Server::Socket*) {
+        printf("close handler called\n");
+    };
+
+    while (true) {
+        server.poll();
+    }
+
+    return 0;
+}
+#endif

@@ -54,15 +54,17 @@ long TcpSocket::read(char * const buffer, size_t size)
             return 0;
         }
         // TODO(asoelter): log instead of print
-        printf("disconnecting for unknown reason\n");
+        printf("disconnecting for unknown reason(%u): %s\n", errno, strerror(errno));
         shutdown();
     }
     else if (bytesRead == socketClosed) {
+        assert(size != 0);
         printf("shutdown requested from client\n");
+        shutdown();
     }
 
     if (errno != 0) {
-        throw std::runtime_error("TcpSocket::write: Error: " + std::string(strerror(errno)));
+        throw std::runtime_error("TcpSocket::read: Error: " + std::string(strerror(errno)));
     }
 
     return bytesRead;

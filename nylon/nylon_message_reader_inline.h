@@ -15,6 +15,10 @@ std::optional<Message> MessageReader<SocketType>::read()
         return std::nullopt;
     }
 
+    if (buffer_.size() - readOffset_ == 0) {
+        rollover();
+    }
+
     auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
     readOffset_ += bytesRead;
 
