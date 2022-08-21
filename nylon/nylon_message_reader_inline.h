@@ -94,6 +94,29 @@ std::optional<Message> MessageReader<SocketType>::read()
 
         return result;
     }
+    else if (messageType == static_cast<char>(Text::messageType)) {
+        if (readAbleBytes < Text::sizeOffset + 1) {
+            // make sure we have the size read in
+            rollover();
+            return std::nullopt;
+        }
+
+        auto const messageSize = buffer_[readOffset_] + Text::sizeOffset;
+
+        if (readableBytes < messageSize) {
+            rollover();
+            return std::nullopt;
+        }
+
+        auto const result = Text::decode(buffer_.data() + decodeOffset_, decoderOffset_);
+
+        if (decodeOffset_ == buffer_.size()) {
+            // catch edge case where the buffer is exactly full
+            rollover();
+        }
+
+        return result;
+    }
 
     // TODO(asoelter): Log instead of printf
     printf("Unknown message type: %i\n", messageType);
