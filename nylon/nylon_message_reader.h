@@ -5,6 +5,7 @@
 
 #include "namespace.h"
 #include "nylon_message.h"
+#include "nylon_message_builder.h"
 
 #include <array>
 #include <optional>
@@ -29,6 +30,7 @@ private:
 private:
     SocketType* socket_;
     std::vector<char> buffer_;
+    MessageBuilder messageBuilder_;
     size_t readOffset_;     //< how many bytes into the array we're reading at
     size_t decodeOffset_;   //< how many bytes into the array we're decoding a message at
 };

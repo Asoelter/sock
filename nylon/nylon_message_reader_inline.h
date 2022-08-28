@@ -15,12 +15,14 @@ std::optional<Message> MessageReader<SocketType>::read()
         return std::nullopt;
     }
 
-    if (buffer_.size() - readOffset_ == 0) {
-        rollover();
+    if (readOffset_ != buffer_.size()) {
+        // only read of there is space to read into. Don't rollover or else you'll cause a ton
+        // of extra rollovers. If we've decoded all the bytes, we'll roll over later on, so the
+        // only time we can get here is if the buffer is full for reading, but still has space
+        // to decode
+        auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
+        readOffset_ += bytesRead;
     }
-
-    auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
-    readOffset_ += bytesRead;
 
     auto const messageType = buffer_[decodeOffset_];
     auto const readableBytes = readOffset_ - decodeOffset_;
@@ -39,14 +41,19 @@ std::optional<Message> MessageReader<SocketType>::read()
             return std::nullopt;
         }
 
-        auto const result = HeartBeat::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+        assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); //heartbeat messages should never be in partial state
+        auto const messageState = messageBuilder_.build<HeartBeat>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 
         if (decodeOffset_ == buffer_.size()) {
             // catch edge case where the buffer is exactly full
             rollover();
         }
 
-        return result;
+        if (messageState != MessageBuilder::State::Finished) {
+            return std::nullopt;
+        }
+
+        return messageBuilder_.finalizeMessage();
     }
     else if (messageType == static_cast<char>(Logon::messageType)) {
         if (readableBytes < Logon::size) {
@@ -62,53 +69,50 @@ std::optional<Message> MessageReader<SocketType>::read()
             return std::nullopt;
         }
 
-        auto const result = Logon::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+        assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); // Logon messages should never be in partial state
+        auto const messageState = messageBuilder_.build<Logon>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 
         if (decodeOffset_ == buffer_.size()) {
             // catch edge case where the buffer is exactly full
             rollover();
         }
 
-        return result;
-    }
-    else if (messageType == static_cast<char>(LogonAccepted::messageType)) {
-        if (readableBytes < LogonAccepted::size) {
-            auto const bytesLeft = buffer_.size() - decodeOffset_;
-
-            // Only roll over if there isn't enough room. If it was
-            // a partial read there could be enough room in our buffer,
-            // but we just need to read again to get the rest of the message
-            if (bytesLeft < LogonAccepted::size) {
-                rollover();
-            }
-
+        if (messageState != MessageBuilder::State::Finished) {
             return std::nullopt;
         }
 
-        auto const result = LogonAccepted::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+        return messageBuilder_.finalizeMessage();
+    }
+    else if (messageType == static_cast<char>(LogonAccepted::messageType) || messageBuilder_.isBuilding(LogonAccepted::messageType)) {
+        assert(messageBuilder_.state() != MessageBuilder::State::Finished);
+        auto const messageState = messageBuilder_.build<LogonAccepted>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 
         if (decodeOffset_ == buffer_.size()) {
             // catch edge case where the buffer is exactly full
             rollover();
         }
 
-        return result;
+        if (messageState != MessageBuilder::State::Finished) {
+            return std::nullopt;
+        }
+
+        return messageBuilder_.finalizeMessage();
     }
     else if (messageType == static_cast<char>(Text::messageType)) {
-        if (readAbleBytes < Text::sizeOffset + 1) {
+        if (readableBytes < Text::textSizeOffset + 1) {
             // make sure we have the size read in
             rollover();
             return std::nullopt;
         }
 
-        auto const messageSize = buffer_[readOffset_] + Text::sizeOffset;
+        auto const messageSize = buffer_[readOffset_] + Text::textSizeOffset;
 
         if (readableBytes < messageSize) {
             rollover();
             return std::nullopt;
         }
 
-        auto const result = Text::decode(buffer_.data() + decodeOffset_, decoderOffset_);
+        auto const result = Text::decode(buffer_.data() + decodeOffset_, decodeOffset_);
 
         if (decodeOffset_ == buffer_.size()) {
             // catch edge case where the buffer is exactly full

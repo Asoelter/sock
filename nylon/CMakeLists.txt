@@ -7,6 +7,7 @@ project("nylon")
 
 add_library("nylon"
             "nylon_message.h"           "nylon_message.cpp"
+            "nylon_message_builder.h"   "nylon_message_builder.cpp"
             "nylon_client.h"            "nylon_client.cpp"
             "nylon_server.h"            "nylon_server.cpp"
             )

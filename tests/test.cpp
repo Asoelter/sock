@@ -3,6 +3,54 @@
 #include "message_reader_test_fixture.h"
 #include "message_writer_test_fixture.h"
 
+#define MESSAGE_BUILDER_TEST(name) TEST(NylonMessageBuilder, name)
+
+MESSAGE_BUILDER_TEST(testHeartBeatBuilding)
+{
+    nylon::MessageBuilder builder;
+    const char * buffer = "\0";
+    size_t bufferPos = 0;
+
+    builder.build<nylon::HeartBeat>(buffer, bufferPos, sizeof(buffer));
+
+    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(bufferPos, 1);
+}
+
+MESSAGE_BUILDER_TEST(testLogonBuilding)
+{
+    nylon::MessageBuilder builder;
+    char buffer[] = "\0";
+    buffer[0] = static_cast<char>(nylon::Logon::messageType);
+    size_t bufferPos = 0;
+
+    builder.build<nylon::Logon>(buffer, bufferPos, sizeof(buffer));
+    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(bufferPos, 1);
+}
+
+MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
+{
+    nylon::MessageBuilder builder;
+    char buffer[] = "\0C"; // C is ascii 67
+    buffer[0] = static_cast<char>(nylon::LogonAccepted::messageType);
+    size_t bufferPos = 0;
+
+    builder.build<nylon::LogonAccepted>(buffer, bufferPos, sizeof(buffer));
+    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(bufferPos, 2);
+
+    auto message = builder.finalizeMessage();
+
+    EXPECT_EQ(message.index(), static_cast<size_t>(nylon::LogonAccepted::messageType));
+
+    auto la = std::get<nylon::LogonAccepted>(message);
+
+    EXPECT_EQ(la.sessionId, 67);
+}
+
+#undef MESSAGE_BUILDER_TEST
+
 #define MESSAGE_TEST(name) TEST(NylonMessage, name)
 
 MESSAGE_TEST(testHeartBeatEncoding)
@@ -230,6 +278,34 @@ MESSAGE_READER_TEST(testRollover_BuildUpRemainder)
     // There's still a message in the buffer, validate read returns it
     pushInputEvent(ReadInput());
     pushOutputValidator(LogonAcceptedOutput(4));
+}
+
+// Here, we're testing that part of a message can
+// be read into the end of the ring buffer in one
+// read call to partially construct the LA, and
+// that the rest of the message can be read in in
+// the next read call
+MESSAGE_READER_TEST(testPartialReads_LogonAccepted)
+{
+    pushInputEvent(LogonInput());           // 1/6 of buffer
+    pushInputEvent(LogonAcceptedInput(1));  // 3/6 of buffer
+    pushInputEvent(LogonAcceptedInput(2));  // 5/6 of buffer
+    pushInputEvent(LogonAcceptedInput(3));  // fill last byte with part of message, next read should get the other part
+
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonOutput());
+
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(1));
+
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(2));
+
+    pushInputEvent(ReadInput());
+    // no output, only partially constructed last LA
+
+    pushInputEvent(ReadInput());
+    pushOutputValidator(LogonAcceptedOutput(3));
 }
 
 #undef MESSAGE_READER_TEST

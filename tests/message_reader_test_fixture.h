@@ -2,6 +2,7 @@
 #define MESSAGE_READER_TEST_FIXTURE_H
 
 #include "../nylon/nylon_message_reader.h"
+#include "../nylon/nylon_message_builder.h"
 
 #include <gtest/gtest.h>
 
@@ -27,11 +28,11 @@ public:
     void pushOutputValidator_(const char * file, unsigned line, OutputValidator const & output)
     {
         if (outputMessages_.empty()) {
-            ADD_FAILURE_AT(file, line) << "Unexpected output event";
+            ADD_FAILURE_AT(file, line) << "Unexpected output event received";
             return;
         }
 
-        auto const & message = outputMessages_.front();
+        auto const message = outputMessages_.front();
         outputMessages_.pop();
 
         output.validate(file, line, message);
@@ -166,6 +167,25 @@ public:
         }
     };
 
+    // Class the manually enter the bytes that would
+    // be at the end of the message buffer when read
+    // calls don't align with message boundaries
+    struct PartialMessageInput : public InputEvent
+    {
+        PartialMessageInput(std::string_view bytes)
+            : bytes_(bytes)
+        {
+
+        }
+
+        void fire(MessageReaderTestFixture& fixture) const override
+        {
+            fixture.messageSender_.pushInput(bytes_.begin(), bytes_.end());
+        }
+
+        std::string_view bytes_;
+    };
+
     struct OutputValidator
     {
         OutputValidator() = default;
@@ -181,7 +201,9 @@ public:
             if (!std::holds_alternative<nylon::HeartBeat>(message)) {
                 // probably should be able to switch between FAIL and ADD_FAILURE
                 // via program arg
-                ADD_FAILURE_AT(file, line) << "Expected HeartBeat message but received other type of message";
+                ADD_FAILURE_AT(file, line)
+                    << "Expected HeartBeat message but received other type of message: "
+                    << message.index();
             }
         }
     };
@@ -193,7 +215,9 @@ public:
             if (!std::holds_alternative<nylon::Logon>(message)) {
                 // probably should be able to switch between FAIL and ADD_FAILURE
                 // via program arg
-                ADD_FAILURE_AT(file, line) << "Expected Logon message but received other type of message";
+                ADD_FAILURE_AT(file, line)
+                    << "Expected Logon message but received other type of message: "
+                    << message.index();
             }
         }
     };
@@ -211,7 +235,7 @@ public:
             if (!std::holds_alternative<nylon::LogonAccepted>(message)) {
                 // probably should be able to switch between FAIL and ADD_FAILURE
                 // via program arg
-                ADD_FAILURE_AT(file, line) << "Expected LogonAccepted message but received other type of message: " << static_cast<char>(nylon::typeOf(message));
+                ADD_FAILURE_AT(file, line) << "Expected LogonAccepted message but received other type of message: " << static_cast<int>(nylon::typeOf(message));
             }
 
             auto & la = std::get<nylon::LogonAccepted>(message);

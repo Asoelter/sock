@@ -23,9 +23,10 @@ enum class MessageType : uint8_t
 
 struct HeartBeat
 {
-    static constexpr auto messageType = MessageType::HeartBeat;
-    static constexpr auto size        = sizeof(uint8_t);
-    static constexpr auto fixedSize   = true;
+    static constexpr auto messageType       = MessageType::HeartBeat;
+    static constexpr auto size              = sizeof(uint8_t);
+    static constexpr auto fixedSize         = true;
+    static constexpr auto messageTypeOffset = 0;
 
     void encode(char ** buffer, size_t& size) const;
     [[nodiscard]] static HeartBeat decode(char const * buffer, size_t& bufferPos);
@@ -33,9 +34,10 @@ struct HeartBeat
 
 struct Logon
 {
-    static constexpr auto messageType = MessageType::Logon;
-    static constexpr auto size = sizeof(uint8_t);
-    static constexpr auto fixedSize   = true;
+    static constexpr auto messageType       = MessageType::Logon;
+    static constexpr auto size              = sizeof(uint8_t);
+    static constexpr auto fixedSize         = true;
+    static constexpr auto messageTypeOffset = 0;
 
     void encode(char ** buffer, size_t& size) const;
     [[nodiscard]] static Logon decode(char const * buffer, size_t& bufferPos);
@@ -43,9 +45,11 @@ struct Logon
 
 struct LogonAccepted
 {
-    static constexpr auto messageType = MessageType::LogonAccepted;
-    static constexpr auto size = sizeof(uint8_t) + sizeof(uint8_t);
-    static constexpr auto fixedSize   = true;
+    static constexpr auto messageType       = MessageType::LogonAccepted;
+    static constexpr auto size              = sizeof(uint8_t) + sizeof(uint8_t);
+    static constexpr auto fixedSize         = true;
+    static constexpr auto messageTypeOffset = 0;
+    static constexpr auto sessionIdOffset   = 1;
 
     void encode(char ** buffer, size_t& size) const;
     [[nodiscard]] static LogonAccepted decode(char const * buffer, size_t& bufferPos);
@@ -55,10 +59,11 @@ struct LogonAccepted
 
 struct Text
 {
-    static constexpr auto messageType = MessageType::Text;
-    static constexpr auto size        = sizeof(uint8_t) + sizeof(uint8_t);
-    static constexpr auto fixedSize   = false;
-    static constexpr auto sizeOffset  = 1;
+    static constexpr auto messageType       = MessageType::Text;
+    static constexpr auto size              = sizeof(uint8_t) + sizeof(uint8_t);
+    static constexpr auto fixedSize         = false;
+    static constexpr auto messageTypeOffset = 0;
+    static constexpr auto textSizeOffset    = 1;
 
     void encode(char ** buffer, size_t& size) const;
     [[nodiscard]] static Text decode(char const * buffer, size_t& bufferPos);
