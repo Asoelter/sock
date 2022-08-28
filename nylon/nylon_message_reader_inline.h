@@ -5,7 +5,6 @@ MessageReader<SocketType>::MessageReader(SocketType* socket, size_t bufferSize)
     , readOffset_(0)
     , decodeOffset_(0)
 {
-
 }
 
 template <typename SocketType>
@@ -16,31 +15,23 @@ std::optional<Message> MessageReader<SocketType>::read()
     }
 
     if (readOffset_ != buffer_.size()) {
-        // only read of there is space to read into. Don't rollover or else you'll cause a ton
+        // only read if there is space to read into. Don't rollover or else you'll cause a ton
         // of extra rollovers. If we've decoded all the bytes, we'll roll over later on, so the
         // only time we can get here is if the buffer is full for reading, but still has space
         // to decode
         auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
         readOffset_ += bytesRead;
+
+        if (bytesRead == net::TcpSocket::wouldBlock) {
+            // just try again later
+            return std::nullopt;
+        }
     }
 
     auto const messageType = buffer_[decodeOffset_];
     auto const readableBytes = readOffset_ - decodeOffset_;
 
     if (messageType == static_cast<char>(HeartBeat::messageType)) {
-        if (readableBytes < HeartBeat::size) {
-            auto const bytesLeft = buffer_.size() - decodeOffset_;
-
-            // Only roll over if there isn't enough room. If it was
-            // a partial read there could be enough room in our buffer,
-            // but we just need to read again to get the rest of the message
-            if (bytesLeft < HeartBeat::size) {
-                rollover();
-            }
-
-            return std::nullopt;
-        }
-
         assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); //heartbeat messages should never be in partial state
         auto const messageState = messageBuilder_.build<HeartBeat>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 
@@ -56,19 +47,6 @@ std::optional<Message> MessageReader<SocketType>::read()
         return messageBuilder_.finalizeMessage();
     }
     else if (messageType == static_cast<char>(Logon::messageType)) {
-        if (readableBytes < Logon::size) {
-            auto const bytesLeft = buffer_.size() - decodeOffset_;
-
-            // Only roll over if there isn't enough room. If it was
-            // a partial read there could be enough room in our buffer,
-            // but we just need to read again to get the rest of the message
-            if (bytesLeft < Logon::size) {
-                rollover();
-            }
-
-            return std::nullopt;
-        }
-
         assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); // Logon messages should never be in partial state
         auto const messageState = messageBuilder_.build<Logon>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 

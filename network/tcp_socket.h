@@ -25,6 +25,7 @@ public:
     static constexpr auto badRead             = -1;
     static constexpr auto badWrite            = -1;
     static constexpr auto socketClosed        =  0;
+    static constexpr auto wouldBlock          = -2;
 
     friend TcpSocket createTcpClient(const char * address, unsigned port);
     friend class TcpServer;

@@ -51,7 +51,7 @@ long TcpSocket::read(char * const buffer, size_t size)
     }
     else if (bytesRead == badRead) {
         if (errno == EWOULDBLOCK) {
-            return 0;
+            return wouldBlock;
         }
         // TODO(asoelter): log instead of print
         printf("disconnecting for unknown reason(%u): %s\n", errno, strerror(errno));

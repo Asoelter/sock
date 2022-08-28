@@ -80,6 +80,7 @@ struct MessageBuilderImpl<HeartBeat>
         assert(bytesAlreadyEncoded < HeartBeat::size);
         assert(bytesAlreadyEncoded == HeartBeat::messageTypeOffset);
         assert(message.index() == static_cast<size_t>(HeartBeat::messageType));
+        assert(bufferSize >= HeartBeat::size);
 
         if (bytesAlreadyEncoded != HeartBeat::messageTypeOffset) {
             throw std::runtime_error("HeartBeat::decode has invalid state");
@@ -94,6 +95,7 @@ struct MessageBuilderImpl<HeartBeat>
         ++buffer;
         ++bytesAlreadyEncoded;
         ++bufferPos;
+        --bufferSize;
 
         return MessageBuilder::State::Finished;
     }
@@ -111,6 +113,7 @@ struct MessageBuilderImpl<Logon>
         assert(bytesAlreadyEncoded < Logon::size);
         assert(bytesAlreadyEncoded == Logon::messageTypeOffset);
         assert(message.index() == static_cast<size_t>(Logon::messageType));
+        assert(bufferSize >= Logon::size);
 
         if (bytesAlreadyEncoded != Logon::messageTypeOffset) {
             throw std::runtime_error("Logon::decode has invalid state");
@@ -125,6 +128,7 @@ struct MessageBuilderImpl<Logon>
         ++buffer;
         ++bytesAlreadyEncoded;
         ++bufferPos;
+        --bufferSize;
 
         return MessageBuilder::State::Finished;
     }
