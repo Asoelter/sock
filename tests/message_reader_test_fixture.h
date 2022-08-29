@@ -167,23 +167,25 @@ public:
         }
     };
 
-    // Class the manually enter the bytes that would
-    // be at the end of the message buffer when read
-    // calls don't align with message boundaries
-    struct PartialMessageInput : public InputEvent
+    struct TextInput : public InputEvent
     {
-        PartialMessageInput(std::string_view bytes)
-            : bytes_(bytes)
+        TextInput(std::string_view text)
+            : text(text)
         {
 
         }
 
         void fire(MessageReaderTestFixture& fixture) const override
         {
-            fixture.messageSender_.pushInput(bytes_.begin(), bytes_.end());
+            auto payload = std::string();
+            payload.push_back(static_cast<char>(nylon::Text::messageType));
+            payload.push_back(static_cast<char>(text.size()));
+            std::copy(text.begin(), text.end(), std::back_inserter(payload));
+
+            fixture.messageSender_.pushInput(payload.begin(), payload.end());
         }
 
-        std::string_view bytes_;
+        std::string text;
     };
 
     struct OutputValidator
@@ -250,6 +252,45 @@ public:
         }
 
         uint8_t sessionId;
+    };
+
+    struct TextOutput : public OutputValidator
+    {
+        TextOutput(std::string_view text)
+            : text(text)
+        {
+
+        }
+
+        void validate(const char * file, unsigned line, nylon::Message const & message) const override
+        {
+            if (!std::holds_alternative<nylon::Text>(message)) {
+                // probably should be able to switch between FAIL and ADD_FAILURE
+                // via program arg
+                ADD_FAILURE_AT(file, line) << "Expected Text message but received other type of message: " << static_cast<int>(nylon::typeOf(message));
+            }
+
+            auto & tm = std::get<nylon::Text>(message);
+            auto const textSizeRecieved = static_cast<size_t>(tm.textSize);
+
+            if (textSizeRecieved != text.size()) {
+                ADD_FAILURE_AT(file, line)
+                    << "Mismatched text sizes. Received: "
+                    << textSizeRecieved
+                    << " Expected: "
+                    << text.size();
+            }
+
+            if (tm.text != text) {
+                ADD_FAILURE_AT(file, line) 
+                    << "Mismatched text messages. Received: "
+                    << tm.text
+                    << " Expected: "
+                    << text;
+            }
+        }
+
+        std::string text;
     };
 
 private:

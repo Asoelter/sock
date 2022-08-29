@@ -76,28 +76,20 @@ std::optional<Message> MessageReader<SocketType>::read()
 
         return messageBuilder_.finalizeMessage();
     }
-    else if (messageType == static_cast<char>(Text::messageType)) {
-        if (readableBytes < Text::textSizeOffset + 1) {
-            // make sure we have the size read in
-            rollover();
-            return std::nullopt;
-        }
-
-        auto const messageSize = buffer_[readOffset_] + Text::textSizeOffset;
-
-        if (readableBytes < messageSize) {
-            rollover();
-            return std::nullopt;
-        }
-
-        auto const result = Text::decode(buffer_.data() + decodeOffset_, decodeOffset_);
+    else if (messageType == static_cast<char>(Text::messageType) || messageBuilder_.isBuilding(Text::messageType)) {
+        assert(messageBuilder_.state() != MessageBuilder::State::Finished);
+        auto const messageState = messageBuilder_.build<Text>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
 
         if (decodeOffset_ == buffer_.size()) {
             // catch edge case where the buffer is exactly full
             rollover();
         }
 
-        return result;
+        if (messageState != MessageBuilder::State::Finished) {
+            return std::nullopt;
+        }
+
+        return messageBuilder_.finalizeMessage();
     }
 
     // TODO(asoelter): Log instead of printf

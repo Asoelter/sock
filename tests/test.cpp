@@ -49,6 +49,28 @@ MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
     EXPECT_EQ(la.sessionId, 67);
 }
 
+MESSAGE_BUILDER_TEST(testTextBuilding)
+{
+    nylon::MessageBuilder builder;
+    char buffer[] = "\0\0hello world";
+    buffer[0] = static_cast<char>(nylon::Text::messageType);
+    buffer[1] = static_cast<char>(sizeof(buffer) - 3); // subtract out message type, length and null terminator
+    size_t bufferPos = 0;
+
+    builder.build<nylon::Text>(buffer, bufferPos, sizeof(buffer));
+
+    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(bufferPos, sizeof(buffer) - 1); // subtract out null terminator
+
+    auto const message = builder.finalizeMessage();
+
+    EXPECT_EQ(message.index(), static_cast<size_t>(nylon::Text::messageType));
+
+    auto const tm = std::get<nylon::Text>(message);
+
+    EXPECT_EQ(tm.text, "hello world");
+}
+
 #undef MESSAGE_BUILDER_TEST
 
 #define MESSAGE_TEST(name) TEST(NylonMessage, name)
@@ -149,6 +171,30 @@ MESSAGE_READER_TEST(testBasicLogonAcceptedMessage)
 
     // verify the message was decoded correctly
     pushOutputValidator(LogonAcceptedOutput(67));
+}
+
+MESSAGE_READER_TEST(testBasicTextMessage)
+{
+    pushInputEvent(TextInput("tst")); // < this is small enough a single read will be able to read it in
+    pushInputEvent(ReadInput());
+    pushOutputValidator(TextOutput("tst"));
+}
+
+MESSAGE_READER_TEST(testTextMessage_TextTooLargeForBuffer)
+{
+    // The payload of the first message is "XXhello world", 13 bytes
+    pushInputEvent(TextInput("hello world"));
+
+    // The read buffer is 6 bytes, so we'll read the first 6 with this call
+    pushInputEvent(ReadInput());
+
+    // Now we'll read another size, for a total of 12, with one more required
+    pushInputEvent(ReadInput());
+
+    // Now we should read in the last byte
+    pushInputEvent(ReadInput());
+
+    pushOutputValidator(TextOutput("hello world"));
 }
 
 // Send in enough messages to rollover the MessageReader

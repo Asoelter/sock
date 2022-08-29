@@ -122,7 +122,7 @@ struct MessageBuilderImpl<Logon>
         auto const decodedMessageType = *buffer;
 
         if (decodedMessageType != static_cast<char>(Logon::messageType)) {
-            throw std::runtime_error("Logon::decode asked to decode a non-HeartBeat");
+            throw std::runtime_error("Logon::decode asked to decode a non-Logon");
         }
 
         ++buffer;
@@ -157,7 +157,7 @@ struct MessageBuilderImpl<LogonAccepted>
             auto const decodedMessageType = *buffer;
 
             if (decodedMessageType != static_cast<char>(LogonAccepted::messageType)) {
-                throw std::runtime_error("LogonAccepted::decode asked to decode a non-HeartBeat");
+                throw std::runtime_error("LogonAccepted::decode asked to decode a non-LogonAccepted");
             }
 
             ++buffer;
@@ -188,10 +188,84 @@ struct MessageBuilderImpl<LogonAccepted>
     }
 };
 
+template <>
+struct MessageBuilderImpl<Text>
+{
+    static MessageBuilder::State build(Message& message,
+                                       char const * buffer,
+                                       size_t& bufferPos,
+                                       size_t bufferSize,
+                                       unsigned& bytesAlreadyEncoded)
+    {
+        assert(message.index() == static_cast<size_t>(Text::messageType));
+        auto newState = MessageBuilder::State::Building;
+
+        if (bytesAlreadyEncoded == Text::messageTypeOffset) {
+            auto constexpr bytesNeededForThisField = 1;
+
+            if (bufferSize < bytesNeededForThisField) {
+                return newState;
+            }
+
+            auto const decodedMessageType = *buffer;
+
+            if (decodedMessageType != static_cast<char>(Text::messageType)) {
+                throw std::runtime_error("Text::decode asked to decode a non-Text");
+            }
+
+            ++buffer;
+            ++bytesAlreadyEncoded;
+            ++bufferPos;
+            --bufferSize;
+        }
+
+        auto& tm = std::get<Text>(message);
+
+        if (bytesAlreadyEncoded == Text::textSizeOffset) {
+            auto constexpr bytesNeededForThisField = 1;
+
+            if (bufferSize < bytesNeededForThisField) {
+                return newState;
+            }
+
+            tm.textSize = *buffer;
+
+            ++buffer;
+            ++bytesAlreadyEncoded;
+            ++bufferPos;
+            --bufferSize;
+        }
+
+        if (bytesAlreadyEncoded >= Text::textOffset) {
+            assert(bytesAlreadyEncoded - 2 < static_cast<unsigned int>(tm.textSize));
+            auto const bytesNeeded = tm.textSize - tm.text.size();
+            auto const bytesToTake = std::min<int>(bytesNeeded, bufferSize);
+
+            for (int i = 0; i < bytesToTake; ++i) {
+                tm.text.push_back(*buffer);
+
+                ++buffer;
+                ++bytesAlreadyEncoded;
+                ++bufferPos;
+                --bufferSize;
+            }
+
+            if (static_cast<size_t>(tm.textSize) == tm.text.size()) {
+                newState = MessageBuilder::State::Finished;
+            }
+
+            assert(static_cast<size_t>(tm.textSize) >= tm.text.size() && "we've read too much");
+        }
+
+        return newState;
+    }
+};
+
 } // namespace detail
 
 template MessageBuilder::State MessageBuilder::build<HeartBeat>(char const * buffer, size_t& bufferPos, size_t bufferSize);
 template MessageBuilder::State MessageBuilder::build<Logon>(char const * buffer, size_t& bufferPos, size_t bufferSize);
 template MessageBuilder::State MessageBuilder::build<LogonAccepted>(char const * buffer, size_t& bufferPos, size_t bufferSize);
+template MessageBuilder::State MessageBuilder::build<Text>(char const * buffer, size_t& bufferPos, size_t bufferSize);
 
 NYLON_NAMESPACE_END

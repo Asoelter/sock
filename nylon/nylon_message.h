@@ -64,6 +64,7 @@ struct Text
     static constexpr auto fixedSize         = false;
     static constexpr auto messageTypeOffset = 0;
     static constexpr auto textSizeOffset    = 1;
+    static constexpr auto textOffset        = 2;
 
     void encode(char ** buffer, size_t& size) const;
     [[nodiscard]] static Text decode(char const * buffer, size_t& bufferPos);
