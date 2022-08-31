@@ -86,6 +86,25 @@ public:
         uint8_t sessionId;
     };
 
+    struct TextInput : public InputEvent
+    {
+        TextInput(std::string_view text)
+            : text(text)
+        {
+
+        }
+
+        void fire(MessageWriterTestFixture& fixture) const
+        {
+            auto payload = nylon::Text();
+            payload.textSize = text.size();
+            payload.text = text;
+            fixture.messageWriter_.write(payload);
+        }
+
+        std::string text;
+    };
+
     struct OutputValidator
     {
         OutputValidator() = default;
@@ -142,6 +161,39 @@ public:
         }
 
         uint8_t sessionId;
+    };
+
+    struct TextOutput : public OutputValidator
+    {
+        TextOutput(std::string_view text)
+            : text(text)
+        {
+
+        }
+
+        void validate(const char * file, unsigned line, Packet const & packet) const override
+        {
+            auto const expectedPacketSize = 1 + sizeof(nylon::Text::textSize) + text.size(); // + 1 for msgType
+
+            if (packet.size() != expectedPacketSize) {
+                ADD_FAILURE_AT(file, line)
+                    << "exptect packet of size " << expectedPacketSize << ", received packet of size " << packet.size();
+            }
+
+            if (static_cast<size_t>(packet[1]) != text.size()) {
+                ADD_FAILURE_AT(file, line)
+                    << "exptect textSize of size " << text.size() << ", received textSize of size " << packet[1];
+            }
+
+            auto const textReceived = std::string_view(&packet[nylon::Text::textOffset], static_cast<size_t>(packet[nylon::Text::textSizeOffset]));
+
+            if (text != textReceived) {
+                ADD_FAILURE_AT(file, line)
+                    << "exptect text=" << text << ", received text=" << textReceived;
+            }
+        }
+
+        std::string text;
     };
 
 private:

@@ -22,6 +22,10 @@ void MessageWriter<SocketType>::write(Message const & msg)
         handleMessage<LogonAccepted>(msg);
         return;
     }
+    else if(msgType == MessageType::Text) {
+        handleMessage<Text>(msg);
+        return;
+    }
 
     printf("unknown message type\n");
     assert(!"unknown message type");
@@ -65,7 +69,7 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
 {
     if (buffer_.empty()) {
         // Don't do pointer arithmetic with empty vector begin and end
-        growBuffer(MsgType::size);
+        growBuffer(sizeOf(msg));
     }
 
     size_t const spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
@@ -74,17 +78,17 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
 
         size_t const spaceAtFrontOfBuffer = begin_ - (&*buffer_.begin());
 
-        if (spaceAtFrontOfBuffer > MsgType::size) {
+        if (spaceAtFrontOfBuffer > sizeOf(msg)) {
             shiftForward();
         }
         else {
-            growBuffer(MsgType::size);
+            growBuffer(sizeOf(msg));
         }
     }
 
     auto const m = std::get<MsgType>(msg);
 
-    auto encodedSize = MsgType::size;
+    auto encodedSize = sizeOf(msg);
 
     m.encode(&end_, encodedSize);
     assert(encodedSize == 0 && "Not all bytes were encoded");

@@ -85,6 +85,7 @@ using Message = std::variant<
 
 MessageType typeOf(const Message& message);
 const char * nameOf(const Message& message);
+size_t sizeOf(Message const & message);
 
 constexpr auto maxMessageSize = std::max({HeartBeat::size, Logon::size, LogonAccepted::size});
 

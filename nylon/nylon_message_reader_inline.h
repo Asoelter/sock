@@ -22,8 +22,15 @@ std::optional<Message> MessageReader<SocketType>::read()
         auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
         readOffset_ += bytesRead;
 
-        if (bytesRead == net::TcpSocket::wouldBlock) {
-            // just try again later
+        if (bytesRead == net::TcpSocket::wouldBlock
+        ||  bytesRead == net::TcpSocket::badRead
+        ||  bytesRead == net::TcpSocket::socketClosed) {
+            // Three scenarios here:
+            //      wouldBlock  : No problem, just waiting on the buffer to flush, try again later
+            //      badRead     : Something went wrong and the socket will shut down
+            //      socketClosed: Close requested from client
+            //
+            // In all cases the correct thing is just to return nothing
             return std::nullopt;
         }
     }

@@ -27,9 +27,23 @@ int main()
 
     while (true) {
         client.poll();
-        auto payload = nylon::LogonAccepted();
-        payload.sessionId = 67;
-        client.send(payload);
+
+        if (msgCount % 4 == 0){
+            auto la = nylon::LogonAccepted();
+            la.sessionId = 67;
+            client.send(la);
+        }
+        else if (msgCount % 3) {
+            auto const lo = nylon::Logon();
+            client.send(lo);
+        }
+        else {
+            auto tm = nylon::Text();
+            tm.text = "hello world";
+            tm.textSize = tm.text.size();
+            client.send(tm);
+        }
+
         printf("sending message %u\n", msgCount++);
     }
 

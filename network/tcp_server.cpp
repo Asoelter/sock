@@ -205,6 +205,7 @@ void TcpServer::stopPollingFor(Socket* socket)
     }
 
     if (closeHandler) {
+        printf("calling close handler with socket: %lu", socketIndex);
         closeHandler(socket);
     }
 

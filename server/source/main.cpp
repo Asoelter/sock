@@ -85,6 +85,12 @@ int main()
             printf("MessageType: LogonAccepted\n");
             printf("\tsessionId: %u\n", la.sessionId);
         }
+        else if (std::holds_alternative<nylon::Text>(msg)) {
+            auto const tm = std::get<nylon::Text>(msg);
+            printf("messageType: Text\n");
+            printf("\ttextSize: %u\n", static_cast<unsigned>(tm.textSize));
+            printf("\ttext    : %s\n", tm.text.c_str());
+        }
         else {
             assert(!"unrecognized message type");
         }

@@ -376,6 +376,12 @@ MESSAGE_WRITER_TEST(testBasicLogonAcceptedMessage)
     pushOutputValidator(LogonAcceptedOutput(67));
 }
 
+MESSAGE_WRITER_TEST(testBasicTextMessage)
+{
+    pushInputEvent(TextInput("hello world"));
+    pushOutputValidator(TextOutput("hello world"));
+}
+
 MESSAGE_WRITER_TEST(testMultipleMessages)
 {
     // grows internal buffer to 1 byte
@@ -389,6 +395,9 @@ MESSAGE_WRITER_TEST(testMultipleMessages)
     // send another 1 byte message
     pushInputEvent(LogonInput());
     pushOutputValidator(LogonOutput());
+
+    pushInputEvent(TextInput("hello world"));
+    pushOutputValidator(TextOutput("hello world"));
 }
 
 #undef MESSAGE_WRITER_TEST

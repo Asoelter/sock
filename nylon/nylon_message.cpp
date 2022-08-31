@@ -1,5 +1,7 @@
 #include "nylon_message.h"
 
+#include "../util/variant_overloaded.h"
+
 #include <cstring>
 #include <stdexcept>
 
@@ -168,6 +170,20 @@ const char * nameOf(const Message& message)
     printf("unknown message type: %u\n", static_cast<unsigned>(type));
     assert(!"unknown message type");
     return "";
+}
+
+size_t sizeOf(Message const & message)
+{
+    size_t result = 0;
+
+    std::visit(Overloaded {
+            [&result](HeartBeat const &)     { result = HeartBeat::size;                       },
+            [&result](Logon const &)         { result = Logon::size;                           },
+            [&result](LogonAccepted const &) { result = LogonAccepted::size;                   },
+            [&result](Text const & tm)       { result = 1 + sizeof(tm.textSize) + tm.textSize; printf("text: {textSize: %u, text: %s}\n", (unsigned)tm.textSize, tm.text.c_str()); },
+    }, message);
+
+    return result;
 }
 
 NYLON_NAMESPACE_END
