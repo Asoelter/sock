@@ -37,8 +37,8 @@ void MessageWriter<SocketType>::growBuffer(size_t size)
     auto const wasEmpty      = buffer_.empty();
     auto const beginDistance = std::distance(&*buffer_.begin(), begin_);
     auto const endDistance   = std::distance(&*buffer_.begin(), end_);
-    assert(beginDistance >= 0);
-    assert(endDistance >= 0);
+    assert(beginDistance >= 0); // would return negative if begin_ < buffer_.begin()
+    assert(endDistance >= 0);   // would return negative if begin_ < buffer_.begin()
 
     buffer_.resize(buffer_.size() + size);
 
@@ -74,7 +74,7 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
 
     size_t const spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
 
-    if (spaceAtBackOfBuffer < MsgType::size) {
+    if (spaceAtBackOfBuffer < sizeOf(msg)) {
 
         size_t const spaceAtFrontOfBuffer = begin_ - (&*buffer_.begin());
 
@@ -95,7 +95,7 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
 
     assert(socket_->connected());
     auto const bytesWritten = socket_->write(begin_, end_ - begin_);
-    assert(bytesWritten >= 0);
+    assert(0 <= bytesWritten && bytesWritten <= spaceAtBackOfBuffer);
 
     begin_ += bytesWritten;
 }
