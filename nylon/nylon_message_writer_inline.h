@@ -72,7 +72,7 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
         growBuffer(sizeOf(msg));
     }
 
-    size_t const spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
+    size_t spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
 
     if (spaceAtBackOfBuffer < sizeOf(msg)) {
 
@@ -84,6 +84,8 @@ void MessageWriter<SocketType>::handleMessage(Message const & msg)
         else {
             growBuffer(sizeOf(msg));
         }
+
+        spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin()); // recalculated for assert below
     }
 
     auto const m = std::get<MsgType>(msg);
