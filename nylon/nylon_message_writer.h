@@ -12,20 +12,21 @@
 
 NYLON_NAMESPACE_BEGIN
 
-template<typename SocketType = net::TcpSocket>
+template<typename MessageDefiner, typename SocketType = net::TcpSocket>
 class MessageWriter
 {
 public:
     MessageWriter(SocketType* socket);
 
-    void write(Message const & msg);
+    template <typename MessageType>
+    void write(MessageType const & msg);
 
 private:
     void growBuffer(size_t amount);
     void shiftForward();
 
-    template<typename MsgType>
-    void handleMessage(Message const & msg);
+    template<typename MessageType>
+    void handleMessage(MessageType const & msg);
 
 private:
     std::vector<char>   buffer_;
@@ -34,8 +35,8 @@ private:
     SocketType*         socket_;
 };
 
-#include "nylon_message_writer_inline.h"
-
 NYLON_NAMESPACE_END
+
+#include "nylon_message_writer_inline.h"
 
 #endif // NYLON_MESSAGE_WRITER_H

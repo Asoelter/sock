@@ -1,12 +1,15 @@
 #ifndef NYON_MESSAGE_H
 #define NYON_MESSAGE_H
 
+#if 0
 #include "namespace.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <variant>
+
+#include "nylon_message_definer.h"
 
 NYLON_NAMESPACE_BEGIN
 
@@ -90,5 +93,6 @@ size_t sizeOf(Message const & message);
 constexpr auto maxMessageSize = std::max({HeartBeat::size, Logon::size, LogonAccepted::size});
 
 NYLON_NAMESPACE_END
+#endif // if 0
 
 #endif // NYON_MESSAGE_H

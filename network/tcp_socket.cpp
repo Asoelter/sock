@@ -89,6 +89,9 @@ long TcpSocket::write(char const * const buffer, size_t size)
         throw std::runtime_error("TcpSocket::write: Error: " + std::string(strerror(errno)));
     }
 
+    assert(errno == 0);
+    assert(bytesWritten >= 0);
+
     return bytesWritten;
 }
 

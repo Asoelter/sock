@@ -3,41 +3,43 @@
 #include "message_reader_test_fixture.h"
 #include "message_writer_test_fixture.h"
 
+#include "../nylon/nylon_message_encoder.h"
+
 #define MESSAGE_BUILDER_TEST(name) TEST(NylonMessageBuilder, name)
 
 MESSAGE_BUILDER_TEST(testHeartBeatBuilding)
 {
-    nylon::MessageBuilder builder;
+    nylon::TestMessageBuilder builder;
     const char * buffer = "\0";
     size_t bufferPos = 0;
 
     builder.build<nylon::HeartBeat>(buffer, bufferPos, sizeof(buffer));
 
-    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
     EXPECT_EQ(bufferPos, 1);
 }
 
 MESSAGE_BUILDER_TEST(testLogonBuilding)
 {
-    nylon::MessageBuilder builder;
+    nylon::TestMessageBuilder builder;
     char buffer[] = "\0";
     buffer[0] = static_cast<char>(nylon::Logon::messageType);
     size_t bufferPos = 0;
 
     builder.build<nylon::Logon>(buffer, bufferPos, sizeof(buffer));
-    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
     EXPECT_EQ(bufferPos, 1);
 }
 
 MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
 {
-    nylon::MessageBuilder builder;
+    nylon::TestMessageBuilder builder;
     char buffer[] = "\0C"; // C is ascii 67
     buffer[0] = static_cast<char>(nylon::LogonAccepted::messageType);
     size_t bufferPos = 0;
 
     builder.build<nylon::LogonAccepted>(buffer, bufferPos, sizeof(buffer));
-    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
     EXPECT_EQ(bufferPos, 2);
 
     auto message = builder.finalizeMessage();
@@ -51,7 +53,7 @@ MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
 
 MESSAGE_BUILDER_TEST(testTextBuilding)
 {
-    nylon::MessageBuilder builder;
+    nylon::TestMessageBuilder builder;
     char buffer[] = "\0\0hello world";
     buffer[0] = static_cast<char>(nylon::Text::messageType);
     buffer[1] = static_cast<char>(sizeof(buffer) - 3); // subtract out message type, length and null terminator
@@ -59,7 +61,7 @@ MESSAGE_BUILDER_TEST(testTextBuilding)
 
     builder.build<nylon::Text>(buffer, bufferPos, sizeof(buffer));
 
-    EXPECT_EQ(builder.state(), nylon::MessageBuilder::State::Finished);
+    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
     EXPECT_EQ(bufferPos, sizeof(buffer) - 1); // subtract out null terminator
 
     auto const message = builder.finalizeMessage();
@@ -79,32 +81,32 @@ MESSAGE_TEST(testHeartBeatEncoding)
 {
     nylon::HeartBeat hb;
 
-    char output[nylon::HeartBeat::size + 1]; // +1 for null terminator
+    auto constexpr heartBeatSize = 1;
+
+    char output[heartBeatSize + 1]; // + 1 for null terminator
     char * outPtrBefore = output;
     char * outPtrAfter  = outPtrBefore;
-    auto size = nylon::HeartBeat::size;
 
-    hb.encode(&outPtrAfter, size);
+    nylon::MessageEncoder::encode(&outPtrAfter, hb);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::HeartBeat::messageType));
-    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::HeartBeat::size);
-    EXPECT_EQ(size, 0);
+    EXPECT_EQ(outPtrAfter, outPtrBefore + heartBeatSize);
 }
 
 MESSAGE_TEST(testLogonEncoding)
 {
     nylon::Logon l;
 
-    char output[nylon::Logon::size + 1]; // +1 for null terminator
+    auto constexpr logonSize = 1;
+
+    char output[logonSize + 1]; // + 1 for null terminator
     char * outPtrBefore = output;
     char * outPtrAfter  = outPtrBefore;
-    auto size = nylon::Logon::size;
 
-    l.encode(&outPtrAfter, size);
+    nylon::MessageEncoder::encode(&outPtrAfter, l);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::Logon::messageType));
-    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::Logon::size);
-    EXPECT_EQ(size, 0);
+    EXPECT_EQ(outPtrAfter, outPtrBefore + logonSize);
 }
 
 MESSAGE_TEST(testLogonAcceptedEncoding)
@@ -112,22 +114,24 @@ MESSAGE_TEST(testLogonAcceptedEncoding)
     nylon::LogonAccepted la;
     la.sessionId = 5;
 
-    char output[nylon::LogonAccepted::size + 1]; // +1 for null terminator
+    auto constexpr logonAcceptedSize = 2;
+
+    char output[logonAcceptedSize + 1]; // + 1 for null terminator
     char * outPtrBefore = output;
     char * outPtrAfter  = outPtrBefore;
-    auto encodeSize = nylon::LogonAccepted::size;
 
-    la.encode(&outPtrAfter, encodeSize);
+    nylon::MessageEncoder::encode(&outPtrAfter, la);
 
     EXPECT_EQ(output[0], static_cast<char>(nylon::LogonAccepted::messageType));
-    EXPECT_EQ(outPtrAfter, outPtrBefore + nylon::LogonAccepted::size);
+    EXPECT_EQ(outPtrAfter, outPtrBefore + logonAcceptedSize);
     EXPECT_EQ(output[1], la.sessionId);
-    EXPECT_EQ(encodeSize, 0);
 
-    auto decodeSize = nylon::LogonAccepted::size;
+#if 0 // fix this once decoding is handled again
+    auto decodeSize = logonAcceptedSize;
     auto const decodedMessage = nylon::LogonAccepted::decode(output, decodeSize);
 
     EXPECT_EQ(decodedMessage.sessionId, output[1]);
+#endif
 }
 
 #undef MESSAGE_TEST
@@ -204,8 +208,6 @@ MESSAGE_READER_TEST(testTextMessage_TextTooLargeForBuffer)
 // ring buffer when it rolls over
 MESSAGE_READER_TEST(testRollover_NoRemainder)
 {
-    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
-
     // Send first message, 1/3 of ring buffer
     pushInputEvent(LogonAcceptedInput(1));
     pushInputEvent(ReadInput());
@@ -230,8 +232,6 @@ MESSAGE_READER_TEST(testRollover_NoRemainder)
 
 MESSAGE_READER_TEST(testRollover_Remainder)
 {
-    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
-
     // Send first, byte sized, message, 1/6 of ring buffer
     pushInputEvent(LogonInput());
     pushInputEvent(ReadInput());
@@ -266,8 +266,6 @@ MESSAGE_READER_TEST(testRollover_Remainder)
 // read until all of the messages are in
 MESSAGE_READER_TEST(testRollover_BuildUpNoRemainder)
 {
-    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
-
     pushInputEvent(LogonAcceptedInput(1));
     pushInputEvent(LogonAcceptedInput(2));
     pushInputEvent(LogonAcceptedInput(3));
@@ -293,8 +291,6 @@ MESSAGE_READER_TEST(testRollover_BuildUpNoRemainder)
 
 MESSAGE_READER_TEST(testRollover_BuildUpRemainder)
 {
-    EXPECT_EQ(nylon::maxMessageSize, nylon::LogonAccepted::size) << "A new, larger message has been added and this test needs updating";
-
     pushInputEvent(LogonInput());
     pushInputEvent(LogonAcceptedInput(1));
     pushInputEvent(LogonAcceptedInput(2));

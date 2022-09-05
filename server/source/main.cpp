@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "nylon/nylon_server.h"
+#include "nylon/nylon_test_messages.h"
 
 //#define USE_OLD
 
@@ -65,11 +66,11 @@ int main()
 
 int main()
 {
-    auto server = nylon::Server(15 * nylon::maxMessageSize);
+    auto server = nylon::Server<nylon::TestMessageDefiner>(15 * 15);
 
     server.listen(16492);
 
-    server.connectHandler = [](nylon::Server::Socket*) {
+    server.connectHandler = [](nylon::Server<nylon::TestMessageDefiner>::Socket*) {
         printf("connected!\n");
     };
 
@@ -88,7 +89,7 @@ int main()
         else if (std::holds_alternative<nylon::Text>(msg)) {
             auto const tm = std::get<nylon::Text>(msg);
             printf("messageType: Text\n");
-            printf("\ttextSize: %u\n", static_cast<unsigned>(tm.textSize));
+            printf("\ttextSize: %lu\n",tm.text.size());
             printf("\ttext    : %s\n", tm.text.c_str());
         }
         else {
@@ -98,7 +99,7 @@ int main()
         printf("\n");
     };
 
-    server.closeHandler = [](nylon::Server::Socket*) {
+    server.closeHandler = [](nylon::Server<nylon::TestMessageDefiner>::Socket*) {
         printf("close handler called\n");
     };
 

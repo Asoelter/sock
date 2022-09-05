@@ -1,5 +1,7 @@
-template <typename SocketType>
-MessageReader<SocketType>::MessageReader(SocketType* socket, size_t bufferSize)
+NYLON_NAMESPACE_BEGIN
+
+template <typename MessageDefiner, typename SocketType>
+MessageReader<MessageDefiner, SocketType>::MessageReader(SocketType* socket, size_t bufferSize)
     : socket_(socket)
     , buffer_(bufferSize)
     , readOffset_(0)
@@ -7,8 +9,9 @@ MessageReader<SocketType>::MessageReader(SocketType* socket, size_t bufferSize)
 {
 }
 
-template <typename SocketType>
-std::optional<Message> MessageReader<SocketType>::read()
+template <typename MessageDefiner, typename SocketType>
+typename MessageReader<MessageDefiner, SocketType>::MessageTypeOptional
+MessageReader<MessageDefiner, SocketType>::read()
 {
     if (!socket_ || !socket_->connected()) {
         return std::nullopt;
@@ -20,94 +23,33 @@ std::optional<Message> MessageReader<SocketType>::read()
         // only time we can get here is if the buffer is full for reading, but still has space
         // to decode
         auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
-        readOffset_ += bytesRead;
 
-        if (bytesRead == net::TcpSocket::wouldBlock
-        ||  bytesRead == net::TcpSocket::badRead
-        ||  bytesRead == net::TcpSocket::socketClosed) {
-            // Three scenarios here:
-            //      wouldBlock  : No problem, just waiting on the buffer to flush, try again later
-            //      badRead     : Something went wrong and the socket will shut down
-            //      socketClosed: Close requested from client
-            //
-            // In all cases the correct thing is just to return nothing
+        if (bytesRead == net::TcpSocket::badRead ||  bytesRead == net::TcpSocket::socketClosed) {
+            // Either something went wrong or the client requested a close. In either case the
+            // correct thing to do here is just to return nothing
             return std::nullopt;
+        }
+        if (bytesRead == net::TcpSocket::wouldBlock) {
+            // No problem, just no data to read. Only continue processing if there's data stored
+            // in our internal buffer that still needs processing.
+            // NOTE: we specifically don't want to increment the readOffset_ by the bytesRead here.
+            // No data was read and bytesRead == -2 so we'd be decrementing the readOffset_
+            if (decodeOffset_ == readOffset_) {
+                return std::nullopt;
+            }
+        }
+        else {
+            readOffset_ += bytesRead;
         }
     }
 
     auto const messageType = buffer_[decodeOffset_];
-    auto const readableBytes = readOffset_ - decodeOffset_;
 
-    if (messageType == static_cast<char>(HeartBeat::messageType)) {
-        assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); //heartbeat messages should never be in partial state
-        auto const messageState = messageBuilder_.build<HeartBeat>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
-
-        if (decodeOffset_ == buffer_.size()) {
-            // catch edge case where the buffer is exactly full
-            rollover();
-        }
-
-        if (messageState != MessageBuilder::State::Finished) {
-            return std::nullopt;
-        }
-
-        return messageBuilder_.finalizeMessage();
-    }
-    else if (messageType == static_cast<char>(Logon::messageType)) {
-        assert(messageBuilder_.state() == MessageBuilder::State::NotStarted); // Logon messages should never be in partial state
-        auto const messageState = messageBuilder_.build<Logon>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
-
-        if (decodeOffset_ == buffer_.size()) {
-            // catch edge case where the buffer is exactly full
-            rollover();
-        }
-
-        if (messageState != MessageBuilder::State::Finished) {
-            return std::nullopt;
-        }
-
-        return messageBuilder_.finalizeMessage();
-    }
-    else if (messageType == static_cast<char>(LogonAccepted::messageType) || messageBuilder_.isBuilding(LogonAccepted::messageType)) {
-        assert(messageBuilder_.state() != MessageBuilder::State::Finished);
-        auto const messageState = messageBuilder_.build<LogonAccepted>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
-
-        if (decodeOffset_ == buffer_.size()) {
-            // catch edge case where the buffer is exactly full
-            rollover();
-        }
-
-        if (messageState != MessageBuilder::State::Finished) {
-            return std::nullopt;
-        }
-
-        return messageBuilder_.finalizeMessage();
-    }
-    else if (messageType == static_cast<char>(Text::messageType) || messageBuilder_.isBuilding(Text::messageType)) {
-        assert(messageBuilder_.state() != MessageBuilder::State::Finished);
-        auto const messageState = messageBuilder_.build<Text>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
-
-        if (decodeOffset_ == buffer_.size()) {
-            // catch edge case where the buffer is exactly full
-            rollover();
-        }
-
-        if (messageState != MessageBuilder::State::Finished) {
-            return std::nullopt;
-        }
-
-        return messageBuilder_.finalizeMessage();
-    }
-
-    // TODO(asoelter): Log instead of printf
-    printf("Unknown message type: %i\n", messageType);
-
-    assert(!"Unknown message type");
-    return std::nullopt;
+    return handleMessage<typename MessageDefiner::MessageTypes>(messageType);
 }
 
-template <typename SocketType>
-void MessageReader<SocketType>::rollover()
+template <typename MessageDefiner, typename SocketType>
+void MessageReader<MessageDefiner, SocketType>::rollover()
 {
     auto const srcBegin  = buffer_.begin() + decodeOffset_;
     auto const srcEnd    = buffer_.end();
@@ -118,3 +60,45 @@ void MessageReader<SocketType>::rollover()
     decodeOffset_ = 0;
     readOffset_ = std::distance(buffer_.begin(), destEnd);
 }
+
+template <typename MessageDefiner, typename SocketType>
+template <typename List>
+typename MessageReader<MessageDefiner, SocketType>::MessageTypeOptional
+MessageReader<MessageDefiner, SocketType>::handleMessage(char messageType)
+{
+    using CurrentType = Head<List>;
+
+    auto const isBuilding = messageBuilder_.template isBuilding<CurrentType>();
+    auto const state = messageBuilder_.state();
+    (void)state;
+
+    if (messageType == static_cast<char>(CurrentType::messageType) || isBuilding) {
+        assert(messageBuilder_.state() != MessageBuilder<MessageDefiner>::State::Finished);
+        auto const messageState = messageBuilder_.template build<CurrentType>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
+
+        if (decodeOffset_ == buffer_.size()) {
+            // catch edge case where the buffer is exactly full
+            rollover();
+        }
+
+        if (messageState != MessageBuilder<MessageDefiner>::State::Finished) {
+            return std::nullopt;
+        }
+
+        return messageBuilder_.finalizeMessage();
+    }
+
+    using NextTypes = Tail<List>;
+
+    if constexpr (IsEmptyList<NextTypes>) {
+        // TODO(asoelter): Log instead of printf
+        printf("Unknown message type: %i\n", messageType);
+        assert(!"Unknown message type");
+        return std::nullopt;
+    }
+    else {
+        return handleMessage<Tail<List>>(messageType);
+    }
+}
+
+NYLON_NAMESPACE_END

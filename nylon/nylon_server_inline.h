@@ -1,25 +1,28 @@
-#include "nylon_server.h"
-
 NYLON_NAMESPACE_BEGIN
 
-Server::Socket::Socket(net::TcpServer::Socket* tcpSocket, size_t startingBufferSize)
+template <typename MessageDefiner>
+Server<MessageDefiner>::Socket::Socket(net::TcpServer::Socket* tcpSocket, size_t startingBufferSize)
     : tcpSocket_(tcpSocket)
     , messageReader_(tcpSocket_, startingBufferSize)
     , messageWriter_(tcpSocket_)
 {
 }
 
-std::optional<Message> Server::Socket::read()
+template <typename MessageDefiner>
+std::optional<typename Server<MessageDefiner>::MessageType>
+Server<MessageDefiner>::Socket::read()
 {
     return messageReader_.read();
 }
 
-bool Server::Socket::connected() const
+template <typename MessageDefiner>
+bool Server<MessageDefiner>::Socket::connected() const
 {
     return tcpSocket_ && tcpSocket_->connected();
 }
 
-Server::Server(size_t startingBufferSize)
+template <typename MessageDefiner>
+Server<MessageDefiner>::Server(size_t startingBufferSize)
     : startingBufferSize_(startingBufferSize)
 {
     tcpServer_.connectHandler = [this](net::TcpServer::Socket * s) {
@@ -35,17 +38,20 @@ Server::Server(size_t startingBufferSize)
     };
 }
 
-void Server::poll()
+template <typename MessageDefiner>
+void Server<MessageDefiner>::poll()
 {
     tcpServer_.poll();
 }
 
-void Server::listen(unsigned port)
+template <typename MessageDefiner>
+void Server<MessageDefiner>::listen(unsigned port)
 {
     tcpServer_.listen(port);
 }
 
-void Server::connectHandlerForwarder(net::TcpServer::Socket * socket)
+template <typename MessageDefiner>
+void Server<MessageDefiner>::connectHandlerForwarder(net::TcpServer::Socket * socket)
 {
     if (!connectHandler) {
         assert(!"missing connect handler!");
@@ -57,7 +63,8 @@ void Server::connectHandlerForwarder(net::TcpServer::Socket * socket)
     connectHandler(&newSocketIt->second);
 }
 
-void Server::readHandlerForwarder(net::TcpServer::Socket * socket)
+template <typename MessageDefiner>
+void Server<MessageDefiner>::readHandlerForwarder(net::TcpServer::Socket * socket)
 {
     if (!readHandler) {
         assert(!"missing read handler!");
@@ -82,7 +89,8 @@ void Server::readHandlerForwarder(net::TcpServer::Socket * socket)
     }
 }
 
-void Server::closeHandlerForwarder(net::TcpServer::Socket * socket)
+template <typename MessageDefiner>
+void Server<MessageDefiner>::closeHandlerForwarder(net::TcpServer::Socket * socket)
 {
     auto socketIt = socketMap_.find(socket->id());
     assert(socketIt != socketMap_.end());

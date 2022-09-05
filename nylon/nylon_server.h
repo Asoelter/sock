@@ -11,9 +11,12 @@
 
 NYLON_NAMESPACE_BEGIN
 
+template <typename MessageDefiner>
 class Server
 {
 public:
+    using MessageType = typename MessageDefiner::MessageType;
+
     class Socket
     {
     public:
@@ -21,17 +24,17 @@ public:
 
         Socket(net::TcpServer::Socket* tcpSocket, size_t startingBufferSize);
 
-        std::optional<Message> read();
+        std::optional<MessageType> read();
         bool connected() const;
     private:
-        net::TcpServer::Socket*               tcpSocket_;
-        MessageReader<net::TcpServer::Socket> messageReader_;
-        MessageWriter<net::TcpServer::Socket> messageWriter_;
+        net::TcpServer::Socket*                               tcpSocket_;
+        MessageReader<MessageDefiner, net::TcpServer::Socket> messageReader_;
+        MessageWriter<MessageDefiner, net::TcpServer::Socket> messageWriter_;
     };
 
     using ConnectHandler = std::function<void(Socket*)>;
     using CloseHandler = std::function<void(Socket*)>;
-    using ReadHandler = std::function<void(Message&&)>;
+    using ReadHandler = std::function<void(MessageType&&)>;
 
     Server(size_t startingBufferSize);
 
@@ -48,7 +51,7 @@ private:
     void closeHandlerForwarder(net::TcpServer::Socket * socket);
 
 private:
-    using SocketMap = std::unordered_map<Socket::Id, Socket>;
+    using SocketMap = std::unordered_map<typename Socket::Id, Socket>;
 
     net::TcpServer  tcpServer_;
     SocketMap       socketMap_;
@@ -57,6 +60,8 @@ private:
 };
 
 NYLON_NAMESPACE_END
+
+#include "nylon_server_inline.h"
 
 #endif // NYLON_SERVER_H
 

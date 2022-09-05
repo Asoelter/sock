@@ -1,3 +1,4 @@
+#if 0
 #include "nylon_message.h"
 
 #include "../util/variant_overloaded.h"
@@ -187,3 +188,4 @@ size_t sizeOf(Message const & message)
 }
 
 NYLON_NAMESPACE_END
+#endif

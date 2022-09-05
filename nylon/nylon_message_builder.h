@@ -2,20 +2,19 @@
 #define MESSAGE_BUILDER_H
 
 #include "nylon_message.h"
+#include "nylon_message_decoder.h"
 #include "namespace.h"
 
 #include <optional>
 
 NYLON_NAMESPACE_BEGIN
 
-namespace detail {
-template <typename MessageType>
-struct MessageBuilderImpl;
-}
-
+template <typename MessageDefiner>
 class MessageBuilder
 {
 public:
+    using MessageType = typename MessageDefiner::MessageType;
+
     enum class State
     {
         NotStarted,
@@ -25,23 +24,34 @@ public:
 
     MessageBuilder() = default;
 
-    template <typename MessageType>
+    template <typename MessageT>
     State build(char const * buffer, size_t& bufferPos, size_t bufferSize);
 
-    bool isBuilding(MessageType messageType);
+    template <typename MessageT>
+    bool isBuilding();
 
-    [[nodiscard]] Message finalizeMessage();
+    [[nodiscard]] MessageType finalizeMessage();
 
     State state() const noexcept;
 
 private:
-    using MaybeMessage = std::optional<Message>;
+    template <typename ConcreteMessageType>
+    MessageDecoderContext<ConcreteMessageType>& context();
 
-    MaybeMessage  message_;
-    State         state_ = State::NotStarted;
-    unsigned      bytesAlreadyEncoded_ = 0;
+    static State translateDecoderState(DecoderState decoderState);
+
+private:
+    using MessageTypeOptional = std::optional<MessageType>;
+    using DecoderContext = typename MessageDefiner::DecoderContext;
+    using DecoderContextOptional = std::optional<DecoderContext>;
+
+    DecoderContextOptional decoderContext_;
+    State                  state_ = State::NotStarted;
+    unsigned               bytesAlreadyEncoded_ = 0;
 };
 
 NYLON_NAMESPACE_END
+
+#include "nylon_message_builder_inline.h"
 
 #endif // MESSAGE_BUILDER_H

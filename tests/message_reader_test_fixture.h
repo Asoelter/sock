@@ -3,6 +3,7 @@
 
 #include "../nylon/nylon_message_reader.h"
 #include "../nylon/nylon_message_builder.h"
+#include "../nylon/nylon_test_messages.h"
 
 #include <gtest/gtest.h>
 
@@ -12,7 +13,7 @@ class MessageReaderTestFixture : public ::testing::Test
 {
 public:
     MessageReaderTestFixture()
-        : messageReader_(&messageSender_, 3 * nylon::maxMessageSize)
+        : messageReader_(&messageSender_, 6 /*bufferSize*/)
     {
 
     }
@@ -68,6 +69,14 @@ private:
         {
             size_t index = 0;
 
+            if (readOffset_ == writeOffset_) {
+                // There's no bytes waiting to be returned. In
+                // this case a unix socket should return -1 and
+                // set errno to EWOULDBLOCK. But, nylon's
+                // tcpSocket translates that into returning -2
+                return -2;
+            }
+
             // writeOffset_ is the end of readable data
             while (readOffset_ < writeOffset_ && index < size) {
                 buffer[index++] = input_[readOffset_++];
@@ -96,7 +105,7 @@ private:
     };
 
 public:
-    using TestMessageReader = nylon::MessageReader<FakeTcpSocket>;
+    using TestMessageReader = nylon::MessageReader<nylon::TestMessageDefiner, FakeTcpSocket>;
 
     struct InputEvent
     {
@@ -112,11 +121,10 @@ public:
 
         void fire(MessageReaderTestFixture& fixture) const override
         {
-            // TODO(asoelter): just call the message type's encode
-            // on the payload
-            char payload[nylon::HeartBeat::size + 1]; // messageType
+            constexpr auto heartBeatSize = 1;
+            char payload[heartBeatSize + 1]; // +1 for null terminator
             payload[0] = 0;
-            fixture.messageSender_.pushInput(payload, payload + nylon::HeartBeat::size);
+            fixture.messageSender_.pushInput(payload, payload + heartBeatSize);
         }
     };
 
@@ -126,11 +134,10 @@ public:
 
         void fire(MessageReaderTestFixture& fixture) const override
         {
-            // TODO(asoelter): just call the message type's encode
-            // on the payload
-            char payload[nylon::Logon::size + 1]; // messageType
+            constexpr auto logonSize = 1;
+            char payload[logonSize + 1]; // +1 for null terminator
             payload[0] = 1;
-            fixture.messageSender_.pushInput(payload, payload + nylon::Logon::size);
+            fixture.messageSender_.pushInput(payload, payload + logonSize);
         }
     };
 
@@ -144,12 +151,11 @@ public:
 
         void fire(MessageReaderTestFixture& fixture) const override
         {
-            // TODO(asoelter): just call the message type's encode
-            // on the payload
-            char payload[nylon::LogonAccepted::size + 1];
+            constexpr auto logonAcceptedSize = 2;
+            char payload[logonAcceptedSize + 1]; // +1 for nul terminator
             payload[0] = 2; // messageType
             payload[1] = sessionId; 
-            fixture.messageSender_.pushInput(payload, payload + nylon::LogonAccepted::size);
+            fixture.messageSender_.pushInput(payload, payload + logonAcceptedSize);
         }
 
         uint8_t sessionId;
@@ -237,7 +243,7 @@ public:
             if (!std::holds_alternative<nylon::LogonAccepted>(message)) {
                 // probably should be able to switch between FAIL and ADD_FAILURE
                 // via program arg
-                ADD_FAILURE_AT(file, line) << "Expected LogonAccepted message but received other type of message: " << static_cast<int>(nylon::typeOf(message));
+                ADD_FAILURE_AT(file, line) << "Expected LogonAccepted message but received other type of message: " << static_cast<int>(typeOf(message));
             }
 
             auto & la = std::get<nylon::LogonAccepted>(message);
@@ -267,19 +273,10 @@ public:
             if (!std::holds_alternative<nylon::Text>(message)) {
                 // probably should be able to switch between FAIL and ADD_FAILURE
                 // via program arg
-                ADD_FAILURE_AT(file, line) << "Expected Text message but received other type of message: " << static_cast<int>(nylon::typeOf(message));
+                ADD_FAILURE_AT(file, line) << "Expected Text message but received other type of message: " << static_cast<int>(typeOf(message));
             }
 
             auto & tm = std::get<nylon::Text>(message);
-            auto const textSizeRecieved = static_cast<size_t>(tm.textSize);
-
-            if (textSizeRecieved != text.size()) {
-                ADD_FAILURE_AT(file, line)
-                    << "Mismatched text sizes. Received: "
-                    << textSizeRecieved
-                    << " Expected: "
-                    << text.size();
-            }
 
             if (tm.text != text) {
                 ADD_FAILURE_AT(file, line) 
@@ -292,6 +289,21 @@ public:
 
         std::string text;
     };
+
+private:
+    static uint8_t typeOf(nylon::TestMessageDefiner::MessageType const & msg)
+    {
+        uint8_t result = 0;
+
+        std::visit(
+            [&result](auto m) {
+                result = m.messageType;
+            },
+            msg
+        );
+
+        return result;
+    }
 
 private:
 

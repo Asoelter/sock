@@ -1,38 +1,23 @@
-template<typename SocketType>
-MessageWriter<SocketType>::MessageWriter(SocketType* socket)
+#include "nylon_message_encoder.h"
+
+NYLON_NAMESPACE_BEGIN
+
+template<typename MessageDefiner, typename SocketType>
+MessageWriter<MessageDefiner, SocketType>::MessageWriter(SocketType* socket)
     : socket_(socket)
 {
 
 }
 
-template<typename SocketType>
-void MessageWriter<SocketType>::write(Message const & msg)
+template<typename MessageDefiner, typename SocketType>
+template <typename MessageType>
+void MessageWriter<MessageDefiner, SocketType>::write(MessageType const & msg)
 {
-    auto const msgType = typeOf(msg);
-
-    if (msgType == MessageType::HeartBeat) {
-        handleMessage<HeartBeat>(msg);
-        return;
-    }
-    else if(msgType == MessageType::Logon) {
-        handleMessage<Logon>(msg);
-        return;
-    }
-    else if(msgType == MessageType::LogonAccepted) {
-        handleMessage<LogonAccepted>(msg);
-        return;
-    }
-    else if(msgType == MessageType::Text) {
-        handleMessage<Text>(msg);
-        return;
-    }
-
-    printf("unknown message type\n");
-    assert(!"unknown message type");
+    handleMessage<MessageType>(msg);
 }
 
-template<typename SocketType>
-void MessageWriter<SocketType>::growBuffer(size_t size)
+template<typename MessageDefiner, typename SocketType>
+void MessageWriter<MessageDefiner, SocketType>::growBuffer(size_t size)
 {
     auto const wasEmpty      = buffer_.empty();
     auto const beginDistance = std::distance(&*buffer_.begin(), begin_);
@@ -54,8 +39,8 @@ void MessageWriter<SocketType>::growBuffer(size_t size)
     }
 }
 
-template<typename SocketType>
-void MessageWriter<SocketType>::shiftForward()
+template<typename MessageDefiner, typename SocketType>
+void MessageWriter<MessageDefiner, SocketType>::shiftForward()
 {
     auto const occupiedSize = std::distance(begin_, end_);
     std::copy(&*buffer_.begin(), begin_, end_);
@@ -63,41 +48,36 @@ void MessageWriter<SocketType>::shiftForward()
     end_ = begin_ + occupiedSize;
 }
 
-template<typename SocketType>
-template<typename MsgType>
-void MessageWriter<SocketType>::handleMessage(Message const & msg)
+template<typename MessageDefiner, typename SocketType>
+template<typename MessageType>
+void MessageWriter<MessageDefiner, SocketType>::handleMessage(MessageType const & msg)
 {
     if (buffer_.empty()) {
         // Don't do pointer arithmetic with empty vector begin and end
-        growBuffer(sizeOf(msg));
+        growBuffer(msg.encodeSize());
     }
 
     size_t spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin());
 
-    if (spaceAtBackOfBuffer < sizeOf(msg)) {
-
+    if (spaceAtBackOfBuffer < msg.encodeSize()) {
         size_t const spaceAtFrontOfBuffer = begin_ - (&*buffer_.begin());
 
-        if (spaceAtFrontOfBuffer > sizeOf(msg)) {
+        if (spaceAtFrontOfBuffer > msg.encodeSize()) {
             shiftForward();
         }
         else {
-            growBuffer(sizeOf(msg));
+            growBuffer(msg.encodeSize());
         }
 
         spaceAtBackOfBuffer = buffer_.size() - (end_ - &*buffer_.begin()); // recalculated for assert below
     }
 
-    auto const m = std::get<MsgType>(msg);
-
-    auto encodedSize = sizeOf(msg);
-
-    m.encode(&end_, encodedSize);
-    assert(encodedSize == 0 && "Not all bytes were encoded");
+    MessageEncoder::encode(&end_, msg);
 
     assert(socket_->connected());
-    auto const bytesWritten = socket_->write(begin_, end_ - begin_);
-    assert(0 <= bytesWritten && bytesWritten <= spaceAtBackOfBuffer);
+    long const bytesWritten = socket_->write(begin_, end_ - begin_);
 
     begin_ += bytesWritten;
 }
+
+NYLON_NAMESPACE_END

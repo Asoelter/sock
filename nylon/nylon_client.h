@@ -14,34 +14,41 @@
 
 NYLON_NAMESPACE_BEGIN
 
+template <typename MessageDefiner>
 class NylonClient
 {
 public:
-    using MessageHandler = std::function<void(Message&&)>;
+    using MessageHandler = std::function<void(typename MessageDefiner::MessageType&&)>;
     using CloseHandler = std::function<void()>;
 
     NylonClient(size_t bufferSize);
 
     void connect(const char * address, unsigned port);
     void poll();
-    void send(Message const & message);
+
+    template <typename MessageType>
+    void send(MessageType const & message);
 
     MessageHandler messageHandler;
     CloseHandler closeHandler;
 
 private:
-    using Buffer = std::vector<unsigned char>;
+    using Buffer            = std::vector<unsigned char>;
+    using MessageSender     = MessageWriter<MessageDefiner, net::TcpSocket>;
+    using MessageReceiver   = MessageReader<MessageDefiner, net::TcpSocket>;
 
     template<typename T>
     using Defered = std::optional<T>;
 
     size_t bufferSize_;
     Buffer sendBuffer_;
-    Defered<net::TcpSocket> tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
-    Defered<MessageReader<net::TcpSocket>> messageReader_;
-    Defered<MessageWriter<net::TcpSocket>> messageWriter_;
+    Defered<net::TcpSocket>  tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
+    Defered<MessageReceiver> messageReceiver_;
+    Defered<MessageSender>   messageSender_;
 };
 
 NYLON_NAMESPACE_END
+
+#include "nylon_client_inline.h"
 
 #endif // NYLON_CLIENT_H

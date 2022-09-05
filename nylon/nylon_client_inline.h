@@ -1,8 +1,7 @@
-#include "nylon_client.h"
-
 NYLON_NAMESPACE_BEGIN
 
-NylonClient::NylonClient(size_t bufferSize)
+template <typename MessageDefiner>
+NylonClient<MessageDefiner>::NylonClient(size_t bufferSize)
     : bufferSize_(bufferSize)
     , sendBuffer_(bufferSize)
     , tcpSocket_()
@@ -10,15 +9,17 @@ NylonClient::NylonClient(size_t bufferSize)
 
 }
 
-void NylonClient::connect(const char * address, unsigned port)
+template <typename MessageDefiner>
+void NylonClient<MessageDefiner>::connect(const char * address, unsigned port)
 {
     tcpSocket_ = net::createTcpClient(address, port);
 
-    messageReader_ = MessageReader(&*tcpSocket_, bufferSize_);
-    messageWriter_ = MessageWriter(&*tcpSocket_);
+    messageReceiver_ = MessageReceiver(&*tcpSocket_, bufferSize_);
+    messageSender_ = MessageSender(&*tcpSocket_);
 }
 
-void NylonClient::poll()
+template <typename MessageDefiner>
+void NylonClient<MessageDefiner>::poll()
 {
     if (!tcpSocket_ && closeHandler) {
         closeHandler();
@@ -30,14 +31,14 @@ void NylonClient::poll()
         return;
     }
 
-    if (!messageReader_) {
+    if (!messageReceiver_) {
         // TODO(asoelter): log not print
         printf("poll called without message reader\n");
         return;
     }
 
     while (true) { // read until read fails (no more messages)
-        auto msg = messageReader_->read();
+        auto msg = messageReceiver_->read();
 
         if (msg) {
             messageHandler(std::move(msg.value()));
@@ -48,15 +49,17 @@ void NylonClient::poll()
     }
 }
 
-void NylonClient::send(Message const & message)
+template <typename MessageDefiner>
+template <typename MessageType>
+void NylonClient<MessageDefiner>::send(MessageType const & message)
 {
-    if (!messageWriter_) {
+    if (!messageSender_) {
         // TODO(asoelter): log not print
         printf("send called without message reader\n");
         return;
     }
 
-    messageWriter_->write(message);
+    messageSender_->write(message);
 }
 
 NYLON_NAMESPACE_END

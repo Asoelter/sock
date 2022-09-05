@@ -10,17 +10,19 @@
 #include <unistd.h>
 
 #include "network/tcp_socket.h"
-#include "nylon/nylon_message.h"
+//#include "nylon/nylon_message.h"
 #include "nylon/nylon_client.h"
+#include "nylon/nylon_test_messages.h"
 
 int main()
 {
-    auto client = nylon::NylonClient(10 * nylon::maxMessageSize);
+    auto client = nylon::NylonClient<nylon::TestMessageDefiner>(10 * 5);
 
     client.connect("127.0.0.1", 16492);
 
-    client.messageHandler = [](nylon::Message&& m) {
-        printf("received %s message\n", nylon::nameOf(m));
+    client.messageHandler = [](nylon::Message&& /*m*/) {
+        // TODO(asoelter): give this message more info again
+        printf("received a message\n");
     };
 
     unsigned msgCount = 1;
@@ -40,7 +42,6 @@ int main()
         else {
             auto tm = nylon::Text();
             tm.text = "hello world";
-            tm.textSize = tm.text.size();
             client.send(tm);
         }
 
