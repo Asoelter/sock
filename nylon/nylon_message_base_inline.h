@@ -1,20 +1,20 @@
 NYLON_NAMESPACE_BEGIN
 
-template <MessageTypeT MessageType, typename ... Fs>
-size_t MessageBase<MessageType, Fs...>::size() const noexcept
+template <MessageBaseDerivable Derived, typename ... Fs>
+size_t MessageBase<Derived, Fs...>::size() const noexcept
 {
     return sizeof(MessageTypeT) + (static_cast<Fs const&>(*this).size() + ... + 0);
 }
 
-template <MessageTypeT MessageType, typename ... Fs>
-size_t MessageBase<MessageType, Fs...>::encodeSize() const noexcept
+template <MessageBaseDerivable Derived, typename ... Fs>
+size_t MessageBase<Derived, Fs...>::encodeSize() const noexcept
 {
     return sizeof(MessageTypeT) + (static_cast<Fs const&>(*this).encodeSize() + ... + 0);
 }
 
-template <MessageTypeT MessageType, typename ... Fs>
+template <MessageBaseDerivable Derived, typename ... Fs>
 template <typename MemberField>
-MemberField& MessageBase<MessageType, Fs...>::field()
+MemberField& MessageBase<Derived, Fs...>::field()
 {
     static_assert(
         std::is_base_of_v<Field<typename MemberField::ValueType, typename MemberField::Archetype>, MemberField>,
@@ -29,9 +29,9 @@ MemberField& MessageBase<MessageType, Fs...>::field()
     return static_cast<MemberField&>(*this);
 }
 
-template <MessageTypeT MessageType, typename ... Fs>
+template <MessageBaseDerivable Derived, typename ... Fs>
 template <typename MemberField>
-MemberField const & MessageBase<MessageType, Fs...>::field() const
+MemberField const & MessageBase<Derived, Fs...>::field() const
 {
     static_assert(
         std::is_base_of_v<Field<typename MemberField::ValueType, typename MemberField::Archetype>, MemberField>,
@@ -46,9 +46,9 @@ MemberField const & MessageBase<MessageType, Fs...>::field() const
     return static_cast<MemberField&>(*this);
 }
 
-template <MessageTypeT MessageType, typename ... Fs>
+template <MessageBaseDerivable Derived, typename ... Fs>
 template <typename Visitor>
-void MessageBase<MessageType, Fs...>::forEachField(Visitor const & visitor) const
+void MessageBase<Derived, Fs...>::forEachField(Visitor const & visitor) const
 {
     // There really never should be any empty messages, but
     // this could save some annoying debuggin in the future
@@ -57,9 +57,9 @@ void MessageBase<MessageType, Fs...>::forEachField(Visitor const & visitor) cons
     }
 }
 
-template <MessageTypeT MessageType, typename ... Fs>
+template <MessageBaseDerivable Derived, typename ... Fs>
 template <typename Visitor, typename ListOfFields>
-void MessageBase<MessageType, Fs...>::forEachFieldImpl(Visitor const& visitor) const
+void MessageBase<Derived, Fs...>::forEachFieldImpl(Visitor const& visitor) const
 {
     using CurrentField = Head<ListOfFields>;
 

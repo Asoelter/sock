@@ -6,18 +6,26 @@
 
 #include "../util/typelist.h"
 
+#include <concepts>
 #include <cstdint>
 
 NYLON_NAMESPACE_BEGIN
 
 using MessageTypeT = uint8_t;
 
-template <MessageTypeT MessageType, typename ... Fs>
+template <typename T>
+concept MessageBaseDerivable = requires(T t)
+{
+    T::messageType;
+    //t.name(); // the compiler chokes on this for some reason
+};
+
+template <MessageBaseDerivable Derived, typename ... Fs>
 struct MessageBase : Fs...
 {
     using Fields = TypeList<Fs...>;
 
-    static constexpr auto messageType = MessageType;
+    static constexpr auto messageType = Derived::messageType;
 
     size_t size() const noexcept;
     size_t encodeSize() const noexcept;

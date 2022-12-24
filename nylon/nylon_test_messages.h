@@ -15,10 +15,19 @@ UINT8_FIELD(textLength);
 STRING_FIELD(text);
 
 // Messages
-struct HeartBeat : MessageBase<0> {};
-struct Logon : MessageBase<1> {};
-struct LogonAccepted : MessageBase<2, sessionIdField> {};
-struct Text : MessageBase<3, textField> {};
+NYLON_MESSAGE_BEGIN(HeartBeat, 0)
+NYLON_MESSAGE_END
+
+NYLON_MESSAGE_BEGIN(Logon, 1)
+NYLON_MESSAGE_END
+
+NYLON_MESSAGE_BEGIN(LogonAccepted, 2)
+    NYLON_MESSAGE_FIELD(sessionId)
+NYLON_MESSAGE_END
+
+NYLON_MESSAGE_BEGIN(Text, 3)
+    NYLON_MESSAGE_FIELD(text)
+NYLON_MESSAGE_END
 
 using TestMessageDefiner = MessageDefiner<HeartBeat, Logon, LogonAccepted, Text>;
 using Message = typename TestMessageDefiner::MessageType;
