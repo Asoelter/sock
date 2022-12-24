@@ -5,7 +5,6 @@
 #include "../util/typelist.h"
 
 #include "namespace.h"
-#include "nylon_message.h"
 #include "nylon_message_builder.h"
 
 #include <array>

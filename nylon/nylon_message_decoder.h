@@ -3,7 +3,6 @@
 
 #include "namespace.h"
 #include "nylon_field_decoder.h"
-#include "nylon_message.h"
 
 #include "../util/typelist.h"
 

@@ -3,8 +3,6 @@
 
 #include "../network/tcp_socket.h"
 
-#include "nylon_message.h"
-
 #include "namespace.h"
 
 #include <string>

@@ -4,7 +4,6 @@
 #include "../network/tcp_socket.h"
 
 #include "namespace.h"
-#include "nylon_message.h"
 #include "nylon_message_reader.h"
 #include "nylon_message_writer.h"
 

@@ -10,4 +10,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ../../)
 target_include_directories(${PROJECT_NAME} PUBLIC network)
 target_link_libraries(${PROJECT_NAME} network)
 
-target_link_libraries(${PROJECT_NAME} nylon)
+target_include_directories(${PROJECT_NAME} PUBLIC nylon)

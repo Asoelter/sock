@@ -1,5 +1,3 @@
-#include "nylon_message.h"
-
 #include <variant>
 
 NYLON_NAMESPACE_BEGIN

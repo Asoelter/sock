@@ -1,7 +1,6 @@
 #ifndef MESSAGE_BUILDER_H
 #define MESSAGE_BUILDER_H
 
-#include "nylon_message.h"
 #include "nylon_message_decoder.h"
 #include "namespace.h"
 
