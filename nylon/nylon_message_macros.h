@@ -20,7 +20,7 @@
 // };
 //
 // struct Text : MessageBase<
-//          name##CRTPImplementer
+//          textCRTPImplementer
 //          , textField
 //     > {};
 
