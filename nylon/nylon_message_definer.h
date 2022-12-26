@@ -11,14 +11,9 @@
 #include "nylon_string_field.h"
 #include "nylon_uint8_field.h"
 
-#include "../util/type_traits.h"
-#include "../util/typelist.h"
+#include "util/type_traits.h"
+#include "util/typelist.h"
 
-#include <concepts>
-#include <cstdint>
-#include <span>
-#include <string>
-#include <type_traits>
 #include <variant>
 
 NYLON_NAMESPACE_BEGIN

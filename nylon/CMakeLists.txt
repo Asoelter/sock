@@ -12,4 +12,6 @@ add_library("nylon"
             "nylon_file_writer.h"       "nylon_file_writer.cpp"
             )
 
+add_subdirectory("network")
+
 target_link_libraries(${PROJECT_NAME} PRIVATE "network")

@@ -7,7 +7,7 @@
 #include "nylon_string_field.h"
 #include "nylon_uint8_field.h"
 
-#include "../util/typelist.h"
+#include "util/typelist.h"
 
 #include <span>
 

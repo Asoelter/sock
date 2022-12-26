@@ -4,7 +4,7 @@
 #include "namespace.h"
 #include "nylon_field_decoder.h"
 
-#include "../util/typelist.h"
+#include "util/typelist.h"
 
 #include <cassert>
 #include <cstddef>

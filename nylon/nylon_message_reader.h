@@ -1,8 +1,8 @@
 #ifndef NYLON_MESSAGE_READER_H
 #define NYLON_MESSAGE_READER_H
 
-#include "../network/tcp_socket.h"
-#include "../util/typelist.h"
+#include "network/tcp_socket.h"
+#include "util/typelist.h"
 
 #include "namespace.h"
 #include "nylon_message_builder.h"

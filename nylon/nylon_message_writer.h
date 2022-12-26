@@ -1,7 +1,7 @@
 #ifndef NYLON_MESSAGE_WRITER_H
 #define NYLON_MESSAGE_WRITER_H
 
-#include "../network/tcp_socket.h"
+#include "network/tcp_socket.h"
 
 #include "namespace.h"
 #include "nylon_file_writer.h"

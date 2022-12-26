@@ -1,7 +1,7 @@
 #ifndef NYLON_SERVER_H
 #define NYLON_SERVER_H
 
-#include "../network/tcp_server.h"
+#include "network/tcp_server.h"
 
 #include "namespace.h"
 #include "nylon_message_reader.h"

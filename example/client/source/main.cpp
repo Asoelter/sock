@@ -9,8 +9,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "network/tcp_socket.h"
-//#include "nylon/nylon_message.h"
 #include "nylon/nylon_client.h"
 #include "nylon/nylon_test_messages.h"
 
