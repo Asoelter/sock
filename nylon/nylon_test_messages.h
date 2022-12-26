@@ -1,9 +1,10 @@
 #ifndef NYLON_TEST_MESSAGES_H
 #define NYLON_TEST_MESSAGES_H
 
+#include "namespace.h"
+#include "nylon_file_writer.h"
 #include "nylon_message_builder.h"
 #include "nylon_message_definer.h"
-#include "namespace.h"
 
 #include <variant>
 

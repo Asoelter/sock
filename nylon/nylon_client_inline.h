@@ -1,10 +1,10 @@
 NYLON_NAMESPACE_BEGIN
 
 template <typename MessageDefiner>
-NylonClient<MessageDefiner>::NylonClient(size_t bufferSize)
-    : bufferSize_(bufferSize)
-    , sendBuffer_(bufferSize)
+NylonClient<MessageDefiner>::NylonClient(Params const & params)
+    : bufferSize_(params.bufferSize)
     , tcpSocket_()
+    , logFileName(params.logFileName)
 {
 
 }
@@ -15,7 +15,7 @@ void NylonClient<MessageDefiner>::connect(const char * address, unsigned port)
     tcpSocket_ = net::createTcpClient(address, port);
 
     messageReceiver_ = MessageReceiver(&*tcpSocket_, bufferSize_);
-    messageSender_ = MessageSender(&*tcpSocket_);
+    messageSender_ = MessageSender({.socket = &*tcpSocket_, .logFileName = logFileName});
 }
 
 template <typename MessageDefiner>

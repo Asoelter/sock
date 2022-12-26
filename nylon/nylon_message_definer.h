@@ -23,7 +23,6 @@
 
 NYLON_NAMESPACE_BEGIN
 
-
 template <typename ... MessageTs>
 struct MessageDefiner
 {

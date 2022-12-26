@@ -4,7 +4,7 @@ template <typename MessageDefiner>
 Server<MessageDefiner>::Socket::Socket(net::TcpServer::Socket* tcpSocket, size_t startingBufferSize)
     : tcpSocket_(tcpSocket)
     , messageReader_(tcpSocket_, startingBufferSize)
-    , messageWriter_(tcpSocket_)
+    , messageWriter_({ .socket = tcpSocket_ , .logFileName = std::nullopt})
 {
 }
 

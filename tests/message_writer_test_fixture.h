@@ -15,7 +15,7 @@ class MessageWriterTestFixture : public ::testing::Test
 public: 
     MessageWriterTestFixture()
         : socket_(*this)
-        , messageWriter_(&socket_)
+        , messageWriter_({ .socket = &socket_, .logFileName = std::nullopt})
     {
 
     }

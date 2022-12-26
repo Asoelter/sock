@@ -1,10 +1,13 @@
 #include "nylon_message_encoder.h"
 
+#include <span>
+
 NYLON_NAMESPACE_BEGIN
 
 template<typename MessageDefiner, typename SocketType>
-MessageWriter<MessageDefiner, SocketType>::MessageWriter(SocketType* socket)
-    : socket_(socket)
+MessageWriter<MessageDefiner, SocketType>::MessageWriter(Params const & params)
+    : socket_(params.socket)
+    , fileWriter_(maybeInitFileWriter(params.logFileName))
 {
 
 }
@@ -77,7 +80,20 @@ void MessageWriter<MessageDefiner, SocketType>::handleMessage(MessageType const 
     assert(socket_->connected());
     long const bytesWritten = socket_->write(begin_, end_ - begin_);
 
+    if (fileWriter_) {
+        fileWriter_->write(std::span<const char>(begin_, end_));
+    }
+
     begin_ += bytesWritten;
+}
+
+std::optional<FileWriter> maybeInitFileWriter(std::optional<std::string> const & logFileName)
+{
+    if (logFileName) {
+        return FileWriter(logFileName.value());
+    }
+
+    return {};
 }
 
 NYLON_NAMESPACE_END

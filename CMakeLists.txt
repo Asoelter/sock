@@ -6,6 +6,6 @@ project("sock")
 
 add_subdirectory("client")
 add_subdirectory("network")
-include_directories("nylon")
+add_subdirectory("nylon")
 add_subdirectory("server")
 add_subdirectory("tests")

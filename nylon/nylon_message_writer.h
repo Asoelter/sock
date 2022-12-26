@@ -4,7 +4,9 @@
 #include "../network/tcp_socket.h"
 
 #include "namespace.h"
+#include "nylon_file_writer.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,7 +16,13 @@ template<typename MessageDefiner, typename SocketType = net::TcpSocket>
 class MessageWriter
 {
 public:
-    MessageWriter(SocketType* socket);
+    struct Params
+    {
+        SocketType * socket;
+        std::optional<std::string> logFileName;
+    };
+
+    MessageWriter(Params const & params);
 
     template <typename MessageType>
     void write(MessageType const & msg);
@@ -27,11 +35,17 @@ private:
     void handleMessage(MessageType const & msg);
 
 private:
-    std::vector<char>   buffer_;
-    char*               begin_;  //< begin of ring buffer
-    char*               end_;    //< end of ring buffer
-    SocketType*         socket_;
+    template <typename T>
+    using Deferred = std::optional<T>;
+
+    std::vector<char>    buffer_;
+    char*                begin_;  //< begin of ring buffer
+    char*                end_;    //< end of ring buffer
+    SocketType*          socket_;
+    Deferred<FileWriter> fileWriter_;
 };
+
+std::optional<FileWriter> maybeInitFileWriter(std::optional<std::string> const & logFileName);
 
 NYLON_NAMESPACE_END
 

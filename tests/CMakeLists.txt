@@ -19,6 +19,6 @@ enable_testing()
 add_executable(${TEST_TARGET} "test.cpp")
 
 target_link_libraries(${TEST_TARGET} GTest::gtest_main)
-target_include_directories(${TEST_TARGET} PUBLIC "nylon")
+target_link_libraries(${TEST_TARGET} "nylon")
 include(GoogleTest)
 gtest_discover_tests(${TEST_TARGET})

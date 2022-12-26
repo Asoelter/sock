@@ -16,7 +16,14 @@
 
 int main()
 {
-    auto client = nylon::NylonClient<nylon::TestMessageDefiner>(10 * 5);
+    using Client = nylon::NylonClient<nylon::TestMessageDefiner>;
+
+    auto const clientParams = Client::Params {
+        .bufferSize = 50,
+        .logFileName = "test.txt"
+    };
+
+    auto client = Client(clientParams);
 
     client.connect("127.0.0.1", 16492);
 
@@ -27,7 +34,7 @@ int main()
 
     unsigned msgCount = 1;
 
-    while (true) {
+    while (msgCount < 5) {
         client.poll();
 
         if (msgCount % 4 == 0){

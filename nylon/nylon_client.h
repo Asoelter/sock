@@ -20,7 +20,13 @@ public:
     using MessageHandler = std::function<void(typename MessageDefiner::MessageType&&)>;
     using CloseHandler = std::function<void()>;
 
-    NylonClient(size_t bufferSize);
+    struct Params
+    {
+        size_t bufferSize;
+        std::optional<std::string> logFileName;
+    };
+
+    NylonClient(Params const & params);
 
     void connect(const char * address, unsigned port);
     void poll();
@@ -40,10 +46,10 @@ private:
     using Defered = std::optional<T>;
 
     size_t bufferSize_;
-    Buffer sendBuffer_;
-    Defered<net::TcpSocket>  tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
-    Defered<MessageReceiver> messageReceiver_;
-    Defered<MessageSender>   messageSender_;
+    Defered<net::TcpSocket>    tcpSocket_; //< This blocks when constructed, so we can't do it in our constructor
+    Defered<MessageReceiver>   messageReceiver_;
+    Defered<MessageSender>     messageSender_;
+    std::optional<std::string> logFileName;
 };
 
 NYLON_NAMESPACE_END
