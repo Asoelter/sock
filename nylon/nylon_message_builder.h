@@ -5,6 +5,7 @@
 #include "namespace.h"
 
 #include <optional>
+#include <span>
 
 NYLON_NAMESPACE_BEGIN
 
@@ -21,10 +22,15 @@ public:
         Finished
     };
 
+    struct BuildResult
+    {
+        std::optional<MessageType> maybeMessage;
+        size_t bytesDecoded;
+    };
+
     MessageBuilder() = default;
 
-    template <typename MessageT>
-    State build(char const * buffer, size_t& bufferPos, size_t bufferSize);
+    BuildResult build(std::span<const char> buffer);
 
     template <typename MessageT>
     bool isBuilding();
@@ -34,6 +40,18 @@ public:
     State state() const noexcept;
 
 private:
+    struct BuildImplResult
+    {
+        size_t bytesDecoded;
+        State state;
+    };
+
+    template <ListType MessageTypes>
+    BuildResult buildRecursive(std::span<const char> buffer);
+
+    template <typename MessageT>
+    BuildImplResult buildImpl(std::span<const char> buffer);
+
     template <typename ConcreteMessageType>
     MessageDecoderContext<ConcreteMessageType>& context();
 

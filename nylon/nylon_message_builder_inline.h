@@ -3,29 +3,66 @@
 NYLON_NAMESPACE_BEGIN
 
 template <typename MessageDefiner>
+typename MessageBuilder<MessageDefiner>::BuildResult
+MessageBuilder<MessageDefiner>::build(std::span<const char> buffer)
+{
+    return buildRecursive<typename MessageDefiner::MessageTypes>(buffer);
+}
+
+template <typename MessageDefiner>
+template <ListType MessageTypes>
+typename MessageBuilder<MessageDefiner>::BuildResult
+MessageBuilder<MessageDefiner>::buildRecursive(std::span<const char> buffer)
+{
+    using CurrentType = Head<MessageTypes>;
+
+    auto const messageType = buffer[0];
+
+    if (messageType == static_cast<char>(CurrentType::messageType) || isBuilding<CurrentType>()) {
+        assert(state_ != MessageBuilder<MessageDefiner>::State::Finished);
+        auto const [bytesDecoded, messageState] = buildImpl<CurrentType>(buffer);
+
+        if (messageState != MessageBuilder<MessageDefiner>::State::Finished) {
+            return { .maybeMessage = std::nullopt, .bytesDecoded = bytesDecoded};
+        }
+
+        return { .maybeMessage = finalizeMessage(), .bytesDecoded = bytesDecoded };
+    }
+
+    using NextTypes = Tail<MessageTypes>;
+
+    if constexpr (IsEmptyList<NextTypes>) {
+        throw std::runtime_error(std::string("Unknown message type: ") + messageType);
+    }
+    else {
+        return buildRecursive<NextTypes>(buffer);
+    }
+}
+
+template <typename MessageDefiner>
 template <typename MessageT>
-typename MessageBuilder<MessageDefiner>::State
-MessageBuilder<MessageDefiner>::build(char const * buffer, size_t& bufferPos, size_t bufferSize)
+typename MessageBuilder<MessageDefiner>::BuildImplResult
+MessageBuilder<MessageDefiner>::buildImpl(std::span<const char> buffer)
 {
     assert(state_ != MessageBuilder::State::Finished && "there is still a message to extract");
 
     switch (state_) {
         case MessageBuilder::State::NotStarted:
         {
-            decoderContext_ = MessageDecoderContext<MessageT>(std::span<const char>(buffer, bufferSize));
-            auto const [decoderState, bytesEncoded] = MessageDecoder::decode<MessageT>(context<MessageT>());
-            bufferPos += bytesEncoded;
+            decoderContext_ = MessageDecoderContext<MessageT>(buffer);
+            auto const [decoderState, bytesDecoded] = MessageDecoder::decode<MessageT>(context<MessageT>());
             state_ = translateDecoderState(decoderState);
+            return { .bytesDecoded = bytesDecoded, .state = state_ };
         } break;
         case MessageBuilder::State::Building:
         {
             assert(decoderContext_.has_value());
 
-            std::visit([buffer, bufferSize](auto& context) { context.reset(std::span<const char>(buffer, bufferSize)); }, decoderContext_.value());
+            std::visit([buffer](auto& context) { context.reset(buffer); }, decoderContext_.value());
 
-            auto const [decoderState, bytesEncoded] = MessageDecoder::decode<MessageT>(context<MessageT>());
-            bufferPos += bytesEncoded;
+            auto const [decoderState, bytesDecoded] = MessageDecoder::decode<MessageT>(context<MessageT>());
             state_ = translateDecoderState(decoderState);
+            return { .bytesDecoded = bytesDecoded, .state = state_ };
         } break;
         case MessageBuilder::State::Finished:
         {
@@ -33,7 +70,9 @@ MessageBuilder<MessageDefiner>::build(char const * buffer, size_t& bufferPos, si
         } break;
     }
 
-    return state_;
+    // shouldn't ever hit this
+    assert(!"we shouldn't have hit this");
+    return { .bytesDecoded = 0, .state = state_ };
 }
 
 template <typename MessageDefiner>

@@ -13,6 +13,12 @@ size_t MessageBase<Derived, Fs...>::encodeSize() const noexcept
 }
 
 template <MessageBaseDerivable Derived, typename ... Fs>
+/*static*/ const char * MessageBase<Derived, Fs...>::name() noexcept
+{
+    return Derived::name();
+}
+
+template <MessageBaseDerivable Derived, typename ... Fs>
 template <typename MemberField>
 MemberField& MessageBase<Derived, Fs...>::field()
 {
@@ -43,7 +49,7 @@ MemberField const & MessageBase<Derived, Fs...>::field() const
         "Asked for a field that does not belong to this message"
     );
 
-    return static_cast<MemberField&>(*this);
+    return static_cast<MemberField const&>(*this);
 }
 
 template <MessageBaseDerivable Derived, typename ... Fs>

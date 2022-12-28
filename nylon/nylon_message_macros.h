@@ -13,7 +13,7 @@
 // {
 //     static constexpr MessageTypeT messageType = 3;
 //
-//     const char * name() const noexcept
+//     static const char * name() noexcept
 //     {
 //         return "text";
 //     }
@@ -24,19 +24,19 @@
 //          , textField
 //     > {};
 
-#define NYLON_MESSAGE_BEGIN(name, messageT)                     \
-    struct name##CRTPImplementer                                \
+#define NYLON_MESSAGE_BEGIN(nameV, messageT)                    \
+    struct nameV##CRTPImplementer                               \
     {                                                           \
         static constexpr MessageTypeT messageType = messageT;   \
                                                                 \
-        const char * name() const noexcept                      \
+        static const char * name() noexcept                     \
         {                                                       \
-            return #name;                                       \
+            return #nameV;                                      \
         }                                                       \
     };                                                          \
                                                                 \
-    struct name : MessageBase<                                  \
-        name##CRTPImplementer
+    struct nameV : MessageBase<                                 \
+        nameV##CRTPImplementer
 
 #define NYLON_MESSAGE_FIELD(field) , field##Field
 

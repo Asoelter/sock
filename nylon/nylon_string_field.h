@@ -12,7 +12,7 @@ NYLON_NAMESPACE_BEGIN
 template <typename Derived>
 struct StringField : public Field<std::string, StringField<Derived>>
 {
-    constexpr char * name() const noexcept;
+    constexpr char const * name() const noexcept;
     std::string value() const noexcept;
     std::string& value() noexcept;
     size_t size() const noexcept;

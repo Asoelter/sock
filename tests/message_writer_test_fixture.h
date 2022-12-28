@@ -185,8 +185,6 @@ public:
                     << "expected textSize of size " << text.size() << ", received textSize of size " << static_cast<size_t>(packet[1]);
             }
 
-            auto constexpr textOffset = 1;
-
             auto const textReceived = std::string_view(&packet[0] + 2, packet.size() - 2);
 
             if (text != textReceived) {

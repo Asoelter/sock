@@ -3,6 +3,8 @@
 
 #include "namespace.h"
 
+#include "util/file_ptr.h"
+
 #include <cstdio>
 #include <memory>
 #include <span>
@@ -17,9 +19,6 @@ public:
     void write(std::span<const char> bytes);
 
 private:
-    struct FileCloser { void operator()(FILE* f) { fclose(f); } };
-    using FilePtr = std::unique_ptr<FILE, FileCloser>;
-
     FilePtr file_;
 };
 

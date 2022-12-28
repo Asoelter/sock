@@ -20,13 +20,11 @@ concept MessageConcept = requires(M t)
     typename M::Fields;
 };
 
-// Template class to store extra data while decoding
-// a meessage. Most fields don't need any extra data
-// so the default will be a blank struct. But, fields
-// like strings do, because they need to be able to
-// remember their size across calls to decode. So,
-// class like this can specialize this context and
-// add any extra data they need
+// Template class to store extra data while decoding a meessage. Most fields
+// don't need any extra data so the default will be a blank struct. But, fields
+// like strings do, because they need to be able to remember their size across
+// calls to decode. So, class like this can specialize this context and add any
+// extra data they need
 template <typename Field>
 struct FieldDecoderContext
 {

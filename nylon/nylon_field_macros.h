@@ -4,7 +4,7 @@
 #define FIELD(archetype, fieldName)                             \
     struct fieldName##Field : archetype<fieldName##Field>       \
     {                                                           \
-        constexpr const char * name() const noexcept            \
+        static constexpr const char * name() noexcept           \
         {                                                       \
             return #fieldName;                                  \
         }                                                       \

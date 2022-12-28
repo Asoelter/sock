@@ -1,9 +1,12 @@
+#include "nylon_file_writer.h"
+
 NYLON_NAMESPACE_BEGIN
 
 template <typename MessageDefiner, typename SocketType>
 MessageReader<MessageDefiner, SocketType>::MessageReader(SocketType* socket, size_t bufferSize)
     : socket_(socket)
     , buffer_(bufferSize)
+    , log_(1000 /*maxEntriesToTrack*/)
     , readOffset_(0)
     , decodeOffset_(0)
 {
@@ -17,35 +20,56 @@ MessageReader<MessageDefiner, SocketType>::read()
         return std::nullopt;
     }
 
-    if (readOffset_ != buffer_.size()) {
-        // only read if there is space to read into. Don't rollover or else you'll cause a ton
-        // of extra rollovers. If we've decoded all the bytes, we'll roll over later on, so the
-        // only time we can get here is if the buffer is full for reading, but still has space
-        // to decode
-        auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
-
-        if (bytesRead == net::TcpSocket::badRead ||  bytesRead == net::TcpSocket::socketClosed) {
-            // Either something went wrong or the client requested a close. In either case the
-            // correct thing to do here is just to return nothing
-            return std::nullopt;
-        }
-        if (bytesRead == net::TcpSocket::wouldBlock) {
-            // No problem, just no data to read. Only continue processing if there's data stored
-            // in our internal buffer that still needs processing.
-            // NOTE: we specifically don't want to increment the readOffset_ by the bytesRead here.
-            // No data was read and bytesRead == -2 so we'd be decrementing the readOffset_
-            if (decodeOffset_ == readOffset_) {
-                return std::nullopt;
-            }
-        }
-        else {
-            readOffset_ += bytesRead;
-        }
+    if (readOffset_ >= buffer_.size()) {
+        // Make sure there's space to read into
+        assert(readOffset_ == buffer_.size() && "we read past the end of the buffer");
+        rollover();
     }
 
-    auto const messageType = buffer_[decodeOffset_];
+    auto const bytesRead = socket_->read(buffer_.data() + readOffset_, buffer_.size() - readOffset_);
 
-    return handleMessage<typename MessageDefiner::MessageTypes>(messageType);
+    if (bytesRead == net::TcpSocket::badRead ||  bytesRead == net::TcpSocket::socketClosed) {
+        // Either something went wrong or the client requested a close. In either case the
+        // correct thing to do here is just to return nothing
+        return std::nullopt;
+    }
+    if (bytesRead == net::TcpSocket::wouldBlock) {
+        // No problem, just no data to read. Only continue processing if there's data stored
+        // in our internal buffer that still needs processing.
+        // NOTE: we specifically don't want to increment the readOffset_ by the bytesRead here.
+        // No data was read and bytesRead == -2 so we'd be decrementing the readOffset_
+        if (decodeOffset_ == readOffset_) {
+            return std::nullopt;
+        }
+    }
+    else {
+        readOffset_ += bytesRead;
+    }
+
+    auto const decodeBegin = buffer_.data() + decodeOffset_;
+    auto const decodeSize = readOffset_ - decodeOffset_;
+
+    std::optional<typename MessageDefiner::MessageType> maybeMessage;
+    unsigned bytesDecoded = 0;
+
+    try {
+        log_.beforeProcessing({decodeBegin, decodeSize}, messageBuilder_.state());
+
+        auto const [msg, bytes] = messageBuilder_.build(std::span<const char>(decodeBegin, decodeSize));
+
+        log_.afterProcessing(messageBuilder_.state(), maybeMessage);
+
+        maybeMessage = msg;
+        bytesDecoded = bytes;
+    }
+    catch(std::runtime_error const & e) {
+        auto fileWriter = FileWriter("message_reader_error_log.txt");
+        fileWriter.write(log_.dump());
+        throw;
+    }
+
+    decodeOffset_ += bytesDecoded;
+    return maybeMessage;
 }
 
 template <typename MessageDefiner, typename SocketType>
@@ -63,41 +87,33 @@ void MessageReader<MessageDefiner, SocketType>::rollover()
 
 template <typename MessageDefiner, typename SocketType>
 template <typename List>
-typename MessageReader<MessageDefiner, SocketType>::MessageTypeOptional
-MessageReader<MessageDefiner, SocketType>::handleMessage(char messageType)
+typename MessageReader<MessageDefiner, SocketType>::HandleMessageResult
+MessageReader<MessageDefiner, SocketType>::handleMessage(std::span<const char> buffer)
 {
     using CurrentType = Head<List>;
 
+    auto const messageType = buffer[0];
     auto const isBuilding = messageBuilder_.template isBuilding<CurrentType>();
-    auto const state = messageBuilder_.state();
-    (void)state;
 
     if (messageType == static_cast<char>(CurrentType::messageType) || isBuilding) {
         assert(messageBuilder_.state() != MessageBuilder<MessageDefiner>::State::Finished);
-        auto const messageState = messageBuilder_.template build<CurrentType>(buffer_.data() + decodeOffset_, decodeOffset_, readOffset_ - decodeOffset_);
-
-        if (decodeOffset_ == buffer_.size()) {
-            // catch edge case where the buffer is exactly full
-            rollover();
-        }
+        auto const [bytesDecoded, messageState] = messageBuilder_.template buildImpl<CurrentType>(buffer);
 
         if (messageState != MessageBuilder<MessageDefiner>::State::Finished) {
-            return std::nullopt;
+            return { .maybeMessage = std::nullopt, .bytesDecoded = bytesDecoded};
         }
 
-        return messageBuilder_.finalizeMessage();
+        return { .maybeMessage = messageBuilder_.finalizeMessage(), .bytesDecoded = bytesDecoded };
     }
 
     using NextTypes = Tail<List>;
 
     if constexpr (IsEmptyList<NextTypes>) {
         // TODO(asoelter): Log instead of printf
-        printf("Unknown message type: %i\n", messageType);
-        assert(!"Unknown message type");
-        return std::nullopt;
+        throw std::runtime_error(std::string("Unknown message type") + messageType);
     }
     else {
-        return handleMessage<Tail<List>>(messageType);
+        return handleMessage<Tail<List>>(buffer);
     }
 }
 

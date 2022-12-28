@@ -17,7 +17,7 @@ template <typename T>
 concept MessageBaseDerivable = requires(T t)
 {
     T::messageType;
-    //t.name(); // the compiler chokes on this for some reason
+    T::name();
 };
 
 template <MessageBaseDerivable Derived, typename ... Fs>
@@ -26,9 +26,11 @@ struct MessageBase : Fs...
     using Fields = TypeList<Fs...>;
 
     static constexpr auto messageType = Derived::messageType;
+    static constexpr auto fieldCount = sizeof...(Fs);
 
     size_t size() const noexcept;
     size_t encodeSize() const noexcept;
+    static const char * name() noexcept;
 
     template <typename MemberField>
     MemberField& field();

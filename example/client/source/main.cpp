@@ -32,7 +32,7 @@ int main()
 
     unsigned msgCount = 1;
 
-    while (msgCount < 5) {
+    while (true) {
         client.poll();
 
         if (msgCount % 4 == 0){

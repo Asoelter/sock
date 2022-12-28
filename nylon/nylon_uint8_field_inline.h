@@ -1,7 +1,7 @@
 NYLON_NAMESPACE_BEGIN
 
 template <typename Derived>
-constexpr char * UInt8Field<Derived>::name() const noexcept
+constexpr char const * UInt8Field<Derived>::name() const noexcept
 {
     return static_cast<Derived const &>(*this).name();
 }

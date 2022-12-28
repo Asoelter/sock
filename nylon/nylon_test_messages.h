@@ -34,6 +34,7 @@ using TestMessageDefiner = MessageDefiner<HeartBeat, Logon, LogonAccepted, Text>
 using Message = typename TestMessageDefiner::MessageType;
 //using TestMessageBuilder = typename TestMessageDefiner::MessageBuilder;
 using TestMessageBuilder = MessageBuilder<TestMessageDefiner>;
+using TestMessageTypes = typename TestMessageDefiner::MessageTypes;
 
 NYLON_NAMESPACE_END
 

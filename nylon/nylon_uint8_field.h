@@ -12,7 +12,7 @@ NYLON_NAMESPACE_BEGIN
 template <typename Derived>
 struct UInt8Field : public Field<uint8_t, UInt8Field<Derived>>
 {
-    constexpr char * name() const noexcept;
+    constexpr char const * name() const noexcept;
     uint8_t value() const noexcept;
     uint8_t& value() noexcept;
     size_t size() const noexcept;

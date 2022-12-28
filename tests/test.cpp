@@ -3,20 +3,20 @@
 #include "message_reader_test_fixture.h"
 #include "message_writer_test_fixture.h"
 
-#include "../nylon/nylon_message_encoder.h"
+#include "nylon/nylon_message_encoder.h"
+#include "nylon/libngrep/ngrep_surveyor.h"
 
 #define MESSAGE_BUILDER_TEST(name) TEST(NylonMessageBuilder, name)
 
 MESSAGE_BUILDER_TEST(testHeartBeatBuilding)
 {
     nylon::TestMessageBuilder builder;
-    const char * buffer = "\0";
-    size_t bufferPos = 0;
+    std::span<const char> buffer = "\0";
 
-    builder.build<nylon::HeartBeat>(buffer, bufferPos, sizeof(buffer));
+    auto const [maybeMessage, bytesDecoded] = builder.build(buffer);
 
-    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
-    EXPECT_EQ(bufferPos, 1);
+    EXPECT_TRUE(maybeMessage.has_value());
+    EXPECT_EQ(bytesDecoded, 1);
 }
 
 MESSAGE_BUILDER_TEST(testLogonBuilding)
@@ -24,11 +24,11 @@ MESSAGE_BUILDER_TEST(testLogonBuilding)
     nylon::TestMessageBuilder builder;
     char buffer[] = "\0";
     buffer[0] = static_cast<char>(nylon::Logon::messageType);
-    size_t bufferPos = 0;
 
-    builder.build<nylon::Logon>(buffer, bufferPos, sizeof(buffer));
-    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
-    EXPECT_EQ(bufferPos, 1);
+    auto const [maybeMessage, bytesDecoded] = builder.build(buffer);
+
+    EXPECT_TRUE(maybeMessage.has_value());
+    EXPECT_EQ(bytesDecoded, 1);
 }
 
 MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
@@ -36,13 +36,12 @@ MESSAGE_BUILDER_TEST(testLogonAcceptedBuilding)
     nylon::TestMessageBuilder builder;
     char buffer[] = "\0C"; // C is ascii 67
     buffer[0] = static_cast<char>(nylon::LogonAccepted::messageType);
-    size_t bufferPos = 0;
 
-    builder.build<nylon::LogonAccepted>(buffer, bufferPos, sizeof(buffer));
-    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
-    EXPECT_EQ(bufferPos, 2);
+    auto const [maybeMessage, bytesDecoded] = builder.build(buffer);
+    EXPECT_TRUE(maybeMessage.has_value());
+    EXPECT_EQ(bytesDecoded, 2);
 
-    auto message = builder.finalizeMessage();
+    auto const & message = maybeMessage.value();
 
     EXPECT_EQ(message.index(), static_cast<size_t>(nylon::LogonAccepted::messageType));
 
@@ -57,14 +56,13 @@ MESSAGE_BUILDER_TEST(testTextBuilding)
     char buffer[] = "\0\0hello world";
     buffer[0] = static_cast<char>(nylon::Text::messageType);
     buffer[1] = static_cast<char>(sizeof(buffer) - 3); // subtract out message type, length and null terminator
-    size_t bufferPos = 0;
 
-    builder.build<nylon::Text>(buffer, bufferPos, sizeof(buffer));
+    auto const [maybeMessage, bytesDecoded] = builder.build(buffer);
 
-    EXPECT_EQ(builder.state(), nylon::TestMessageBuilder::State::Finished);
-    EXPECT_EQ(bufferPos, sizeof(buffer) - 1); // subtract out null terminator
+    EXPECT_TRUE(maybeMessage.has_value());
+    EXPECT_EQ(bytesDecoded, sizeof(buffer) - 1); // subtract out null terminator
 
-    auto const message = builder.finalizeMessage();
+    auto const & message = maybeMessage.value();
 
     EXPECT_EQ(message.index(), static_cast<size_t>(nylon::Text::messageType));
 
@@ -397,3 +395,75 @@ MESSAGE_WRITER_TEST(testMultipleMessages)
 }
 
 #undef MESSAGE_WRITER_TEST
+
+#define NGREP_TEST(name) TEST(Ngrep, name)
+
+NGREP_TEST(testBasicSurvey)
+{
+    constexpr auto maxBufferSize = 256; // Nothing special about 256. Just larger than what we need
+    char buffer[maxBufferSize];
+    char * bufferEnd = buffer;
+
+    nylon::MessageEncoder::encode(&bufferEnd, []() {
+        return nylon::HeartBeat();
+    }());
+
+    nylon::MessageEncoder::encode(&bufferEnd, []()
+        { return nylon::Logon();
+    }());
+
+    nylon::MessageEncoder::encode(&bufferEnd, []() {
+        nylon::LogonAccepted la;
+        la.sessionId = 1;
+        return la;
+    }());
+
+    nylon::MessageEncoder::encode(&bufferEnd, []() {
+        nylon::Text tm;
+        tm.text = "hello world";
+        return tm;
+    }());
+
+    size_t const bufferSize = bufferEnd - buffer;
+
+    assert(bufferSize < maxBufferSize && "Need to increase max buffer size");
+
+    auto surveyor = nylon::Surveyor<nylon::TestMessageDefiner>();
+
+    surveyor.survey({buffer, bufferSize});
+
+    EXPECT_EQ(surveyor.messageCount<nylon::HeartBeat>(), 1);
+    EXPECT_EQ(surveyor.messageCount<nylon::Logon>(), 1);
+    EXPECT_EQ(surveyor.messageCount<nylon::LogonAccepted>(), 1);
+    EXPECT_EQ(surveyor.messageCount<nylon::Text>(), 1);
+}
+
+NGREP_TEST(testDuplicateMessagesAreTrackedCorrectly)
+{
+    // The surveyor was missing about half of the messages per message type.
+    // Send in two of each message and verify that both messages for each
+    // message type is tracked correctly
+    constexpr auto maxBufferSize = 256; // Nothing special about 256. Just larger than what we need
+    char buffer[maxBufferSize];
+    char * bufferEnd = buffer;
+
+    nylon::MessageEncoder::encode(&bufferEnd, []() {
+        return nylon::HeartBeat();
+    }());
+
+    nylon::MessageEncoder::encode(&bufferEnd, []() {
+        return nylon::HeartBeat();
+    }());
+
+    size_t const bufferSize = bufferEnd - buffer;
+
+    assert(bufferSize < maxBufferSize && "Need to increase max buffer size");
+
+    auto surveyor = nylon::Surveyor<nylon::TestMessageDefiner>();
+
+    surveyor.survey({buffer, bufferSize});
+
+    EXPECT_EQ(surveyor.messageCount<nylon::HeartBeat>(), 2);
+}
+
+#undef NGREP_TEST

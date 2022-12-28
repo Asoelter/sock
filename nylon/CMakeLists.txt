@@ -13,5 +13,7 @@ add_library("nylon"
             )
 
 add_subdirectory("network")
+add_subdirectory("libngrep")
 
+target_include_directories(${PROJECT_NAME} PRIVATE "libngrep")
 target_link_libraries(${PROJECT_NAME} PRIVATE "network")
